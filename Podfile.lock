@@ -1,0 +1,16 @@
+PODS:
+  - KeyboardMan (0.6.0)
+  - SnapKit (0.22.0)
+  - YYKeyboardManager (1.0.1)
+
+DEPENDENCIES:
+  - KeyboardMan
+  - SnapKit
+  - YYKeyboardManager
+
+SPEC CHECKSUMS:
+  KeyboardMan: 665211f180093f5bb3c6ff7e8b7f858c432c6ccf
+  SnapKit: 0dd2fd157330f1ea11fd84da13e6be8a7a22bae0
+  YYKeyboardManager: ff53d2e80d1808567a7f004028bd200d9469a89f
+
+COCOAPODS: 0.39.0
