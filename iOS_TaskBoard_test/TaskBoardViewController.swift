@@ -36,7 +36,7 @@ class TaskBoardViewController: UIViewController {
   //MARK: - Property
   
   private var _containerScrollView: UIScrollView!
-  private var _collectionView: UICollectionView!
+  private var _collectionView: TaskBoardCollectionView!
   private var _collectionViewFlowLayout: UICollectionViewFlowLayout!
   private var _screenDirection: ScreenDirection = .vertical
   private var lastProposedContentOffsetX: CGFloat = 0
@@ -107,7 +107,7 @@ class TaskBoardViewController: UIViewController {
     _collectionViewFlowLayout.minimumLineSpacing = lineSpacing
     _collectionViewFlowLayout.sectionInset = UIEdgeInsets(top: top, left: horizontalInset, bottom: bootom, right: horizontalInset)
     
-    _collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: _collectionViewFlowLayout)
+    _collectionView = TaskBoardCollectionView(frame: view.bounds, collectionViewLayout: _collectionViewFlowLayout)
     _collectionView.dataSource = self
     _collectionView.delegate = self
     _collectionView.registerClass(TasksCollectionViewCell.self, forCellWithReuseIdentifier: "cell")
@@ -138,6 +138,7 @@ class TaskBoardViewController: UIViewController {
     
     view.addSubview(_pageScrollView)
     _pageScrollView.backgroundColor = UIColor.orangeColor()
+    
     _setPageable(true)
 
     let longPressGesture = UILongPressGestureRecognizer(target: self, action: #selector(_collectionViewDidLongPressed(_:)))
@@ -152,8 +153,12 @@ class TaskBoardViewController: UIViewController {
     _keyboardMan.animateWhenKeyboardAppear = { [weak self] appearPostIndex, keyboardHeight, keyboardHeightIncrement in
       guard let weakSelf = self else { return }
       
+      var keyboardHeight = keyboardHeight - weakSelf.bootom
+      if weakSelf._isZooming {
+         keyboardHeight = keyboardHeight / weakSelf.kZoomScale
+      }
       weakSelf._keyboardHeight = keyboardHeight
-      NSNotificationCenter.defaultCenter().postNotificationName(kTaskListHeightDidChangedNotification, object: nil, userInfo: ["max_height": weakSelf._itemHeight - keyboardHeight + weakSelf.bootom, "super_view_height": weakSelf._itemHeight])
+      NSNotificationCenter.defaultCenter().postNotificationName(kTaskListHeightDidChangedNotification, object: nil, userInfo: ["max_height": weakSelf._itemHeight - keyboardHeight, "super_view_height": weakSelf._itemHeight])
     }
     
     _keyboardMan.animateWhenKeyboardDisappear = { [weak self] keyboardHeight in
@@ -286,23 +291,26 @@ extension TaskBoardViewController {
       guard let tasksTableView = tasksCell.tasksViewController?.tasksTableView else { return }
       guard let taskCell = tasksTableView.cellForRowAtIndexPath(taskIndexPath) as? TaskTableViewCell else { return }
       
+      
       taskCell.contentView.hidden = true
       _draggingTaskCell = taskCell
       _snapshotView = taskCell.contentView.snapshotViewAfterScreenUpdates(false)
       _snapshotView?.backgroundColor = UIColor.orangeColor()
-      _collectionView.addSubview(_snapshotView!)
+      view.addSubview(_snapshotView!)
       
-      _snapshotView?.center = gestureRecognizer.locationInView(_collectionView)
-      
+      if _isZooming {
+        _snapshotView?.transform = CGAffineTransformMakeScale(kZoomScale, kZoomScale)
+      }
+      _snapshotView?.center = gestureRecognizer.locationInView(view)
+
       _lastDragging = (listIndexPath, taskIndexPath)
-      
       
       debugPrint("BEGAN....")
     case .Changed:
       debugPrint("CHANGE....")
-      
-      _snapshotView?.center = gestureRecognizer.locationInView(_collectionView)
-      
+      _snapshotView?.center = gestureRecognizer.locationInView(view)
+
+      _collectionView.touchRectDidChanged((_snapshotView?.frame)!)
       
       guard let (listIndexPath, taskIndexPath) = _taskIndexPath(atPoint: gestureRecognizer.locationInView(_collectionView)) else { return }
       
@@ -340,7 +348,6 @@ extension TaskBoardViewController {
       }
       
       _lastDragging = (listIndexPath, taskIndexPath)
-      
     case .Failed, .Cancelled, .Ended:
       debugPrint("END....")
       _snapshotView?.removeFromSuperview()
@@ -349,11 +356,17 @@ extension TaskBoardViewController {
       _draggingTaskCell?.contentView.hidden = false
       _draggingTaskCell = nil
       
+      _collectionView.stopAutoScroll()
     case .Possible:
       debugPrint("POSSIBLE....")
     }
   }
   
+  /**
+   CollectionView tapGesture event
+   
+   - parameter gestureRecognizer:
+   */
   @objc
   private func _collectionViewDidTap(gestureRecognizer: UITapGestureRecognizer) {
     if _isZooming {
@@ -377,7 +390,6 @@ extension TaskBoardViewController {
     } else {
       self._isZooming = true
       UIView.animateWithDuration(0.25, delay: 0, options: .CurveEaseInOut, animations: {
-      
         
         self._collectionView.frame.origin.x -= self._collectionView.frame.width * self.kZoomScale
         self._collectionView.frame.origin.y -= self._collectionView.frame.height * self.kZoomScale
@@ -387,7 +399,8 @@ extension TaskBoardViewController {
         
         self._collectionViewFlowLayout.itemSize.height = self._itemHeight
         self._collectionView.reloadData()
-        self._collectionView.transform = CGAffineTransformMakeScale(0.5, 0.5)
+        
+        self._collectionView.transform = CGAffineTransformMakeScale(self.kZoomScale, self.kZoomScale)
 
       }) { (finished:Bool) in
         self._setPageable(false)
@@ -395,6 +408,13 @@ extension TaskBoardViewController {
     }
   }
   
+  /**
+   List indexPath and task indexPath for touch point
+   
+   - parameter point: touch point
+   
+   - returns: (list indexPath on collecitonView, task indexPath on tableView)
+   */
   private func _taskIndexPath(atPoint point: CGPoint) -> (listIndexPath: NSIndexPath, taskIndexPath: NSIndexPath)? {
     guard let listIndexPath = _collectionView.indexPathForItemAtPoint(point) else { return nil }
     guard let tasksCell = _collectionView.cellForItemAtIndexPath(listIndexPath) as? TasksCollectionViewCell else { return nil }

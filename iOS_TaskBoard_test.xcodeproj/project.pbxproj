@@ -8,6 +8,10 @@
 
 /* Begin PBXBuildFile section */
 		89D1920CDDE6A1AED9012500 /* Pods_iOS_TaskBoard_test.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B24F261465709483FC027FE9 /* Pods_iOS_TaskBoard_test.framework */; };
+		980E8CBD1D670F13008E6F4C /* AutoScrollScrollView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 980E8CBC1D670F13008E6F4C /* AutoScrollScrollView.swift */; };
+		980E8CBF1D6712A2008E6F4C /* TaskBoardCollectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 980E8CBE1D6712A2008E6F4C /* TaskBoardCollectionView.swift */; };
+		980E8CC11D6803E3008E6F4C /* TasksTableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 980E8CC01D6803E3008E6F4C /* TasksTableView.swift */; };
+		980E8CC31D68051D008E6F4C /* AutoScrollManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 980E8CC21D68051D008E6F4C /* AutoScrollManager.swift */; };
 		983D23991D619706004ED6A3 /* TaskListHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 983D23981D619706004ED6A3 /* TaskListHeaderView.swift */; };
 		983D239B1D619ABB004ED6A3 /* TaskListFooterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 983D239A1D619ABB004ED6A3 /* TaskListFooterView.swift */; };
 		984086781D5B76FB005E8643 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 984086771D5B76FB005E8643 /* AppDelegate.swift */; };
@@ -18,11 +22,14 @@
 		986D25C91D603C25006071BB /* TasksCollectionViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986D25C81D603C25006071BB /* TasksCollectionViewCell.swift */; };
 		986D25CB1D603C5B006071BB /* TasksViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986D25CA1D603C5B006071BB /* TasksViewController.swift */; };
 		986D25CD1D603DAE006071BB /* TaskTableViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986D25CC1D603DAE006071BB /* TaskTableViewCell.swift */; };
-		986D25D01D605E12006071BB /* CustomPageWidthCollectionViewFlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 986D25CF1D605E12006071BB /* CustomPageWidthCollectionViewFlowLayout.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		0C20AE70D0DE430F004B54F4 /* Pods-iOS_TaskBoard_test.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-iOS_TaskBoard_test.debug.xcconfig"; path = "Pods/Target Support Files/Pods-iOS_TaskBoard_test/Pods-iOS_TaskBoard_test.debug.xcconfig"; sourceTree = "<group>"; };
+		980E8CBC1D670F13008E6F4C /* AutoScrollScrollView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AutoScrollScrollView.swift; sourceTree = "<group>"; };
+		980E8CBE1D6712A2008E6F4C /* TaskBoardCollectionView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = TaskBoardCollectionView.swift; path = ../TaskBoardCollectionView.swift; sourceTree = "<group>"; };
+		980E8CC01D6803E3008E6F4C /* TasksTableView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TasksTableView.swift; sourceTree = "<group>"; };
+		980E8CC21D68051D008E6F4C /* AutoScrollManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AutoScrollManager.swift; sourceTree = "<group>"; };
 		983D23981D619706004ED6A3 /* TaskListHeaderView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = TaskListHeaderView.swift; path = ../TaskListHeaderView.swift; sourceTree = "<group>"; };
 		983D239A1D619ABB004ED6A3 /* TaskListFooterView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TaskListFooterView.swift; sourceTree = "<group>"; };
 		984086741D5B76FB005E8643 /* iOS_TaskBoard_test.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iOS_TaskBoard_test.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -35,8 +42,6 @@
 		986D25C81D603C25006071BB /* TasksCollectionViewCell.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TasksCollectionViewCell.swift; sourceTree = "<group>"; };
 		986D25CA1D603C5B006071BB /* TasksViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TasksViewController.swift; sourceTree = "<group>"; };
 		986D25CC1D603DAE006071BB /* TaskTableViewCell.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TaskTableViewCell.swift; sourceTree = "<group>"; };
-		986D25CF1D605E12006071BB /* CustomPageWidthCollectionViewFlowLayout.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CustomPageWidthCollectionViewFlowLayout.swift; sourceTree = "<group>"; };
-		98796E541D60A02C0082C681 /* iOS_TaskBoard_test-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "iOS_TaskBoard_test-Bridging-Header.h"; sourceTree = "<group>"; };
 		B24F261465709483FC027FE9 /* Pods_iOS_TaskBoard_test.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_iOS_TaskBoard_test.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F87FF1CB255A930C8302F742 /* Pods-iOS_TaskBoard_test.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-iOS_TaskBoard_test.release.xcconfig"; path = "Pods/Target Support Files/Pods-iOS_TaskBoard_test/Pods-iOS_TaskBoard_test.release.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -53,6 +58,19 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		980E8CC41D682BFD008E6F4C /* View */ = {
+			isa = PBXGroup;
+			children = (
+				980E8CBE1D6712A2008E6F4C /* TaskBoardCollectionView.swift */,
+				986D25C81D603C25006071BB /* TasksCollectionViewCell.swift */,
+				980E8CC01D6803E3008E6F4C /* TasksTableView.swift */,
+				986D25CC1D603DAE006071BB /* TaskTableViewCell.swift */,
+				983D23981D619706004ED6A3 /* TaskListHeaderView.swift */,
+				983D239A1D619ABB004ED6A3 /* TaskListFooterView.swift */,
+			);
+			name = View;
+			sourceTree = "<group>";
+		};
 		9840866B1D5B76FB005E8643 = {
 			isa = PBXGroup;
 			children = (
@@ -74,19 +92,16 @@
 		984086761D5B76FB005E8643 /* iOS_TaskBoard_test */ = {
 			isa = PBXGroup;
 			children = (
-				984086771D5B76FB005E8643 /* AppDelegate.swift */,
-				986D25C81D603C25006071BB /* TasksCollectionViewCell.swift */,
+				980E8CC41D682BFD008E6F4C /* View */,
+				980E8CC21D68051D008E6F4C /* AutoScrollManager.swift */,
+				980E8CBC1D670F13008E6F4C /* AutoScrollScrollView.swift */,
 				984086791D5B76FB005E8643 /* TaskBoardViewController.swift */,
+				986D25CA1D603C5B006071BB /* TasksViewController.swift */,
 				9840867B1D5B76FB005E8643 /* Main.storyboard */,
 				9840867E1D5B76FB005E8643 /* Assets.xcassets */,
 				984086801D5B76FB005E8643 /* LaunchScreen.storyboard */,
 				984086831D5B76FB005E8643 /* Info.plist */,
-				986D25CA1D603C5B006071BB /* TasksViewController.swift */,
-				986D25CC1D603DAE006071BB /* TaskTableViewCell.swift */,
-				983D23981D619706004ED6A3 /* TaskListHeaderView.swift */,
-				983D239A1D619ABB004ED6A3 /* TaskListFooterView.swift */,
-				986D25CF1D605E12006071BB /* CustomPageWidthCollectionViewFlowLayout.swift */,
-				98796E541D60A02C0082C681 /* iOS_TaskBoard_test-Bridging-Header.h */,
+				984086771D5B76FB005E8643 /* AppDelegate.swift */,
 			);
 			path = iOS_TaskBoard_test;
 			sourceTree = "<group>";
@@ -230,13 +245,16 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				980E8CC11D6803E3008E6F4C /* TasksTableView.swift in Sources */,
 				9840867A1D5B76FB005E8643 /* TaskBoardViewController.swift in Sources */,
+				980E8CBF1D6712A2008E6F4C /* TaskBoardCollectionView.swift in Sources */,
 				983D239B1D619ABB004ED6A3 /* TaskListFooterView.swift in Sources */,
 				986D25CB1D603C5B006071BB /* TasksViewController.swift in Sources */,
 				986D25CD1D603DAE006071BB /* TaskTableViewCell.swift in Sources */,
-				986D25D01D605E12006071BB /* CustomPageWidthCollectionViewFlowLayout.swift in Sources */,
 				986D25C91D603C25006071BB /* TasksCollectionViewCell.swift in Sources */,
+				980E8CBD1D670F13008E6F4C /* AutoScrollScrollView.swift in Sources */,
 				983D23991D619706004ED6A3 /* TaskListHeaderView.swift in Sources */,
+				980E8CC31D68051D008E6F4C /* AutoScrollManager.swift in Sources */,
 				984086781D5B76FB005E8643 /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -359,7 +377,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.worktile.pro.iOS-TaskBoard-test";
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_OBJC_BRIDGING_HEADER = "iOS_TaskBoard_test/iOS_TaskBoard_test-Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;
@@ -375,7 +393,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.worktile.pro.iOS-TaskBoard-test";
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_OBJC_BRIDGING_HEADER = "iOS_TaskBoard_test/iOS_TaskBoard_test-Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "";
 			};
 			name = Release;
 		};

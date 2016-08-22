@@ -33,29 +33,4 @@ class TasksCollectionViewCell: UICollectionViewCell {
   //MARK: - Property
   
   private var _tasksViewController: TasksViewController?
-  
-  //MARK: - Lifecycle
-  
-  override init(frame: CGRect) {
-    super.init(frame: frame)
-    
-    NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(_zoom), name: "zoom", object: nil)
-    
-  }
-  
-  required init?(coder aDecoder: NSCoder) {
-    fatalError("init(coder:) has not been implemented")
-  }
-  
-//  override func layoutSubviews() {
-//    
-//    guard let tasksTableView = tasksViewController?.tasksTableView else { return }
-//    tasksTableView.frame.size.height = tasksTableView.contentSize.height
-//    frame.size.height = tasksTableView.contentSize.height + 100
-//  }
-  
-  
-  func _zoom() {
-    transform = CGAffineTransformMakeScale(0.5, 0.5)
-  }
 }
