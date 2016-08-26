@@ -38,6 +38,7 @@ extension AutoScrollScrollView where Self: UIScrollView {
           }
           self?.contentOffset.x -= scrollDistance
         case .vertical:
+          
           if scrollDistance > 0 {
             if weakSelf.contentOffset.y == 0 { return }
             if weakSelf.contentOffset.y - scrollDistance < 0 {
@@ -58,7 +59,7 @@ extension AutoScrollScrollView where Self: UIScrollView {
     
     autoScrollManager?.touchRect = touchRect
   }
-  
+    
   func stopAutoScroll() {
     autoScrollManager?.stopAutoScroll()
   }

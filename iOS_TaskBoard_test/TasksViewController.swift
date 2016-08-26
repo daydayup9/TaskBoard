@@ -17,11 +17,22 @@ class TasksViewController: UIViewController {
   //MARK: - Public
   
   var taskListID: String = ""
-
-  var tasksTableView: UITableView!
-  var viewHeightConstrain: NSLayoutConstraint?
   
-  func insertTask(task: String, atIndexPath indexPath: NSIndexPath) {
+  var tasksTableView: TasksTableView!
+  var viewHeightConstrain: NSLayoutConstraint?
+  var listHeaderViewLongPressActionClosure: ((longPressGuesture: UILongPressGestureRecognizer) -> Void)?
+  
+  var _listHeaderView: TaskListHeaderView!
+  var _listFooterView: TaskListFooterView!
+  
+  func reloadTask(task: Task, atIndexPath indexPath: NSIndexPath) {
+    _tasks[indexPath.row] = task
+    tasksTableView.beginUpdates()
+    tasksTableView.reloadRowsAtIndexPaths([NSIndexPath(forRow: indexPath.row, inSection: 0)], withRowAnimation: .Automatic)
+    tasksTableView.endUpdates()
+  }
+  
+  func insertTask(task: Task, atIndexPath indexPath: NSIndexPath) {
     tasksTableView.beginUpdates()
     _tasks.insert(task, atIndex: indexPath.row)
     tasksTableView.insertRowsAtIndexPaths([NSIndexPath(forRow: indexPath.row, inSection: 0)], withRowAnimation: .Automatic)
@@ -29,6 +40,9 @@ class TasksViewController: UIViewController {
   }
   
   func removeTask(atIndexPath indexPath: NSIndexPath) {
+    if indexPath.row < 0 || indexPath.row >= _tasks.count {
+      return
+    }
     tasksTableView.beginUpdates()
     _tasks.removeAtIndex(indexPath.row)
     tasksTableView.deleteRowsAtIndexPaths([NSIndexPath(forRow: indexPath.row, inSection: 0)], withRowAnimation: .Automatic)
@@ -41,23 +55,26 @@ class TasksViewController: UIViewController {
   
   var tasksTableViewWillEndScrollClosure: ((position: CGPoint) -> Void)?
   
-  func setupData(tasks: [String], maxHeight: CGFloat, superViewHeight: CGFloat, scrollToPoint point: CGPoint?=nil) {
+//  func setupData(tasks: [String], maxHeight: CGFloat, superViewHeight: CGFloat, scrollToPoint point: CGPoint?=nil) {
+  func setupData(tasks: [Task], maxHeight: CGFloat, superViewHeight: CGFloat, scrollToPoint point: CGPoint?=nil) {
+
     _tasks = tasks
     
     tasksTableView.reloadData()
+    
     updateTableViewHeight(false, maxHeight: maxHeight, superViewHeight: superViewHeight)
-
+    
     guard let point = point else { return }
     tasksTableView.scrollRectToVisible(CGRect(origin: point, size: CGSize(width: 100, height: 5)), animated: false)
   }
   
   func updateTableViewHeight(animated: Bool, additionHeight: CGFloat=0, maxHeight: CGFloat, superViewHeight: CGFloat) {
     func updateTableViewHeight() -> CGFloat {
-//      self.tasksTableView.frame.size.height = self.tasksTableView.contentSize.height > 560 ? 560 : self.tasksTableView.contentSize.height
+      //      self.tasksTableView.frame.size.height = self.tasksTableView.contentSize.height > 560 ? 560 : self.tasksTableView.contentSize.height
       //    view.layoutIfNeeded()
-//      self._listFooterView.frame.origin.y = self.tasksTableView.frame.size.height + 40
-//      self.view.frame.size.height = 80 + self.tasksTableView.frame.size.height
-
+      //      self._listFooterView.frame.origin.y = self.tasksTableView.frame.size.height + 40
+      //      self.view.frame.size.height = 80 + self.tasksTableView.frame.size.height
+      
       let headerHeight = _listHeaderView.frame.height
       let tableViewHeight = tasksTableView.contentSize.height
       let footerHeight = _listFooterView.frame.height
@@ -98,9 +115,7 @@ class TasksViewController: UIViewController {
   
   //MARK: - Property
   
-  private var _listHeaderView: TaskListHeaderView!
-  private var _listFooterView: TaskListFooterView!
-  private var _tasks: [String] = []
+  private var _tasks: [Task] = []
   
   //MARK: - Lifecycle
   
@@ -127,8 +142,8 @@ extension TasksViewController: UITableViewDataSource, UITableViewDelegate {
   
   func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
     let cell = tableView.dequeueReusableCellWithIdentifier("cell", forIndexPath: indexPath) as! TaskTableViewCell
-    
-    cell.textLabel?.text = _tasks[indexPath.row]
+    cell.textLabel?.text = _tasks[indexPath.row].title
+    cell.contentView.hidden = _tasks[indexPath.row].hidden
     
     return cell
   }
@@ -160,15 +175,20 @@ extension TasksViewController {
     view.layer.cornerRadius = 5
     
     _listHeaderView = TaskListHeaderView(frame: CGRect.zero)
+    
+    let longPress = UILongPressGestureRecognizer(target: self, action: #selector(_listHeaderViewDidLongPressed(_:)))
+    longPress.minimumPressDuration = 0.25
+    _listHeaderView.addGestureRecognizer(longPress)
+    
     view.addSubview(_listHeaderView)
     _listHeaderView.snp_makeConstraints { (make) in
       make.leading.equalTo(0)
       make.trailing.equalTo(0)
       make.top.equalTo(0)
     }
-//    headerView.frame = CGRect(x: 0, y: 0, width: 321, height: 40)
+    //    headerView.frame = CGRect(x: 0, y: 0, width: 321, height: 40)
     
-    tasksTableView = UITableView(frame: CGRect.zero)
+    tasksTableView = TasksTableView(frame: CGRect.zero)
     tasksTableView.dataSource = self
     tasksTableView.delegate = self
     tasksTableView.registerClass(TaskTableViewCell.self, forCellReuseIdentifier: "cell")
@@ -180,10 +200,10 @@ extension TasksViewController {
       make.leading.equalTo(0)
       make.trailing.equalTo(0)
       make.top.equalTo(_listHeaderView.snp_bottom)
-//      make.bottom.equalTo(0)
+      //      make.bottom.equalTo(0)
     }
-//    tasksTableView.frame = CGRect(x: 0, y: 40, width: 321, height: 0)
-
+    //    tasksTableView.frame = CGRect(x: 0, y: 40, width: 321, height: 0)
+    
     _listFooterView = TaskListFooterView(frame: CGRect.zero)
     view.addSubview(_listFooterView)
     _listFooterView.snp_makeConstraints { (make) in
@@ -194,7 +214,7 @@ extension TasksViewController {
       make.height.equalTo(40)
     }
     
-//    _listFooterView.frame = CGRect(x: 0, y: 40, width: 321, height: 40)
+    //    _listFooterView.frame = CGRect(x: 0, y: 40, width: 321, height: 40)
   }
   
   
@@ -206,5 +226,10 @@ extension TasksViewController {
     guard let superViewHeight = notification.userInfo?["super_view_height"] as? CGFloat else { return }
     
     updateTableViewHeight(true, maxHeight: maxHeight, superViewHeight: superViewHeight)
+  }
+  
+  @objc
+  private func _listHeaderViewDidLongPressed(pressGuesture: UILongPressGestureRecognizer) {
+    listHeaderViewLongPressActionClosure?(longPressGuesture: pressGuesture)
   }
 }

@@ -8,6 +8,7 @@
 
 import UIKit
 
+
 class AutoScrollManager {
 
   //MARK: - Public
@@ -27,8 +28,7 @@ class AutoScrollManager {
     _displayLink?.invalidate()
     _displayLink = nil
   }
-  
-  
+
   //MARK: - Commons
   
   enum ScrollDirection {
@@ -56,6 +56,7 @@ extension AutoScrollManager {
   
   @objc
   private func _scrollSpeedDidChanged() {
+    debugPrint("活肤")
     let leftInset = scrollViewRect.minX - touchRect.minX
     let rightInset = scrollViewRect.maxX - touchRect.maxX
     
