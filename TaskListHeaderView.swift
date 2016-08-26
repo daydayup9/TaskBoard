@@ -14,8 +14,7 @@ class TaskListHeaderView: UIView {
   
   private var _listNameLabel: UILabel
   private var _optionButton: UIButton
-  
-  
+
   //MARK: - Lifecycle
   
   override init(frame: CGRect) {
@@ -41,9 +40,11 @@ class TaskListHeaderView: UIView {
     }
     
     backgroundColor = UIColor.orangeColor()
+    
   }
   
   required init?(coder aDecoder: NSCoder) {
     fatalError("init(coder:) has not been implemented")
   }
 }
+
