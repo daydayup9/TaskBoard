@@ -31,6 +31,8 @@ struct TaskList: TaskListType {
   var tasks: [Task]
 }
 
+let kTaskTableViewShouldStopAutoScrollNotification: String = "TaskTableViewShouldStopAutoScrollNotification"
+
 class TaskBoardViewController: UIViewController {
   
   //MARK: - Public
@@ -39,11 +41,15 @@ class TaskBoardViewController: UIViewController {
   var margin: CGFloat      = 14
   var top: CGFloat         = 10
   var bootom: CGFloat      = 20
+  var canAddList: Bool = false
   
   //MARK: - Commons
   
   private let kScreenWidth = UIScreen.mainScreen().bounds.width
   private let kScreenHeight = UIScreen.mainScreen().bounds.height
+  
+  private let kTaskListCellID: String    = "tsak_list_cell"
+  private let kAddTaskListCellID: String = "add_task_list_cell"
   
   private enum ScreenDirection {
     case vertical
@@ -59,7 +65,6 @@ class TaskBoardViewController: UIViewController {
   private var _collectionView: TaskBoardCollectionView!
   private var _collectionViewFlowLayout: UICollectionViewFlowLayout!
   private var _screenDirection: ScreenDirection = .vertical
-  private var lastProposedContentOffsetX: CGFloat = 0
   private var _itemHeight: CGFloat {
     switch _screenDirection {
     case .vertical:
@@ -75,21 +80,17 @@ class TaskBoardViewController: UIViewController {
   private var _snapshotView: UIView?
   private var _draggingTaskCell: TaskTableViewCell?
   private var _draggingListCell: TasksCollectionViewCell?
-
+  
   private var _lastDragging: (listIndexPath: NSIndexPath, taskIndexPath: NSIndexPath)?
   
-//  private var _taskLists:[[String]] = []
+  private var _taskLists: [TaskList] = []
   
-    private var _taskLists: [TaskList] = []
-  
-  private var _keyboardMan: KeyboardMan!
+  private var _keyboardMan: KeyboardMan?
   private var _isZooming: Bool = false
-  private var _isListColelctionViewIsZooming: Bool = false
-  private var _isCollectionViewIndexPathChanged: Bool = false
-  private var _draggingCollectionViewCellLocation: CGPoint = CGPointZero
-  private var _currentIndexPath: NSIndexPath?
-  private var _saveTapPoint: CGPoint = CGPointZero
-  private var _ScrollToLeftDirection: Bool = false
+  private var _isZoomForDragList: Bool = false
+//  private var _scrollToLeftDirection: Bool = false
+  
+  private var _draggingOffset: CGPoint = CGPoint.zero
   
   private var _itemWidth: CGFloat {
     if UIDevice.currentDevice().userInterfaceIdiom == .Pad {
@@ -119,43 +120,30 @@ class TaskBoardViewController: UIViewController {
   
   override func viewDidLoad() {
     super.viewDidLoad()
-        for index in 0...7 {
-          var numbers = 0
-    
-          if index == 0 {
-            numbers = 6
-          } else if index == 1 {
-            numbers = 32
-          } else if index == 2 || index == 6 {
-            numbers = 8
-          } else if index == 3 || index == 4 {
-            numbers == 13
-          } else {
-            numbers = 5
-          }
-          var tasks: [Task] = []
-    
-    
-          for number in 0...numbers {
-            let task = Task(title: "\(number)", hidden: false)
-           tasks.append(task)
-          }
-          
-//    taskLists.append()
-          _taskLists.append(TaskList(name: "新建任务\(index)", hidden: false, tasks: tasks))
-        }
-    //
-    //    taskLists = _taskLists
-    
-//    _taskLists = [
-//      ["1", "2", "3", "4", "5", "6"],
-//      ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "13", "14", "15", "16", "13", "14", "15", "16", "13", "14", "15", "16", "13", "14", "15", "16", "13", "14", "15", "16"],
-//      ["1", "2", "3", "4", "5", "6", "7", "8"],
-//      ["1", "2", "3", "4", "5", "6", "7", "8", "4", "5", "6", "7", "8"],
-//      ["1", "2", "3", "4", "5", "6", "7"],
-//      ["1", "2", "3", "4", "5", "6", "7", "8", "4", "5", "6", "7", "8"],
-//      ["1", "2", "3", "4", "5", "6", "7", "8"]
-//    ]
+    for index in 0...7 {
+      var numbers = 0
+      
+      if index == 0 {
+        numbers = 6
+      } else if index == 1 {
+        numbers = 32
+      } else if index == 2 || index == 6 {
+        numbers = 8
+      } else if index == 3 || index == 4 {
+        numbers == 13
+      } else {
+        numbers = 5
+      }
+      var tasks: [Task] = []
+      
+      
+      for number in 0...numbers {
+        let task = Task(title: "\(number)", hidden: false)
+        tasks.append(task)
+      }
+      
+      _taskLists.append(TaskList(name: "新建任务\(index)", hidden: false, tasks: tasks))
+    }
     
     let horizontalInset = margin + lineSpacing
     
@@ -168,19 +156,12 @@ class TaskBoardViewController: UIViewController {
     _collectionView = TaskBoardCollectionView(frame: view.bounds, collectionViewLayout: _collectionViewFlowLayout)
     _collectionView.dataSource = self
     _collectionView.delegate = self
-    _collectionView.registerClass(TasksCollectionViewCell.self, forCellWithReuseIdentifier: "cell")
+    _collectionView.registerClass(TasksCollectionViewCell.self, forCellWithReuseIdentifier: kTaskListCellID)
+    _collectionView.registerClass(AddTaskListCollectionViewCell.self, forCellWithReuseIdentifier: kAddTaskListCellID)
     _collectionView.backgroundColor = UIColor.whiteColor()
     automaticallyAdjustsScrollViewInsets = false
     
     view.addSubview(_collectionView)
-    //        _collectionView.snp_makeConstraints { (make) in
-    //          make.leading.equalTo(0)
-    //          make.trailing.equalTo(0)
-    //          make.top.equalTo(topLayoutGuide)
-    //          make.bottom.equalTo(bottomLayoutGuide)
-    //          make.centerX.equalTo(0)
-    //          make.centerY.equalTo(0)
-    //        }
     _collectionView.frame = view.bounds
     _collectionView.frame.size.height -= _navigationBarHight
     _collectionView.frame.origin.y += _navigationBarHight
@@ -203,12 +184,12 @@ class TaskBoardViewController: UIViewController {
     longPressGesture.minimumPressDuration = 0.25
     _collectionView.addGestureRecognizer(longPressGesture)
     
-    let tapPressGesture = UITapGestureRecognizer(target: self, action: #selector(_collectionViewDidTap(_:)))
+    let tapPressGesture = UITapGestureRecognizer(target: self, action: #selector(_collectionViewDidTapped(_:)))
     tapPressGesture.numberOfTapsRequired = 2
     _collectionView.addGestureRecognizer(tapPressGesture)
     
     _keyboardMan = KeyboardMan()
-    _keyboardMan.animateWhenKeyboardAppear = { [weak self] appearPostIndex, keyboardHeight, keyboardHeightIncrement in
+    _keyboardMan?.animateWhenKeyboardAppear = { [weak self] appearPostIndex, keyboardHeight, keyboardHeightIncrement in
       guard let weakSelf = self else { return }
       
       var keyboardHeight = keyboardHeight - weakSelf.bootom
@@ -219,7 +200,7 @@ class TaskBoardViewController: UIViewController {
       NSNotificationCenter.defaultCenter().postNotificationName(kTaskListHeightDidChangedNotification, object: nil, userInfo: ["max_height": weakSelf._itemHeight - keyboardHeight, "super_view_height": weakSelf._itemHeight])
     }
     
-    _keyboardMan.animateWhenKeyboardDisappear = { [weak self] keyboardHeight in
+    _keyboardMan?.animateWhenKeyboardDisappear = { [weak self] keyboardHeight in
       guard let weakSelf = self else { return }
       
       weakSelf._keyboardHeight = 0
@@ -236,7 +217,7 @@ extension TaskBoardViewController {
     _screenDirection = size.width < size.height ? .vertical : .horizontal
     
     if _screenDirection == .vertical {
-      _scrollToPage(atPosition: _collectionView.contentOffset.x)
+      _scrollToCorrectPage(atPosition: _collectionView.contentOffset.x)
     }
     
     _setPageable(_screenDirection == .vertical && !_isZooming)
@@ -269,11 +250,17 @@ extension TaskBoardViewController: UICollectionViewDataSource, UICollectionViewD
   //MARK: - UICollectionViewDataSource
   
   func collectionView(collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-    return _taskLists.count
+    return _taskLists.count + (canAddList ? 1 : 0)
   }
   
   func collectionView(collectionView: UICollectionView, cellForItemAtIndexPath indexPath: NSIndexPath) -> UICollectionViewCell {
-    let cell = collectionView.dequeueReusableCellWithReuseIdentifier("cell", forIndexPath: indexPath) as! TasksCollectionViewCell
+    if canAddList && indexPath.item == collectionView.numberOfItemsInSection(0) - 1 {
+      let cell = collectionView.dequeueReusableCellWithReuseIdentifier(kAddTaskListCellID, forIndexPath: indexPath) as! AddTaskListCollectionViewCell
+      
+      return cell
+    }
+    
+    let cell = collectionView.dequeueReusableCellWithReuseIdentifier(kTaskListCellID, forIndexPath: indexPath) as! TasksCollectionViewCell
     cell.backgroundColor = UIColor.redColor()
     
     if cell.tasksViewController == nil {
@@ -281,118 +268,13 @@ extension TaskBoardViewController: UICollectionViewDataSource, UICollectionViewD
     }
     cell.tasksViewController?.setupData(_taskLists[indexPath.item].tasks, maxHeight: _itemHeight - _keyboardHeight, superViewHeight: _itemHeight)
     cell.tasksViewController?.listHeaderViewLongPressActionClosure = { [weak self](longPressGuesture: UILongPressGestureRecognizer) in
-      guard let weakSelf = self  else { return }
-     weakSelf._listHeadViewLongGuestureAction(longPressGuesture)
+      self?._listHeadViewLongPressGuestureAction(longPressGuesture)
     }
     return cell
   }
   
   func collectionView(collectionView: UICollectionView, canMoveItemAtIndexPath indexPath: NSIndexPath) -> Bool {
     return true
-  }
-}
-
-extension TaskBoardViewController {
-  
-  //MARK: - cell headerView UILongPressGestureRecognizer Event
-  @objc
-  private func _listHeadViewLongGuestureAction(longPressGuesture: UILongPressGestureRecognizer) {
-    switch longPressGuesture.state {
-    case .Began:
-      guard let (listIndexPath, taskIndexPath) = _taskIndexPath(atPoint: longPressGuesture.locationInView(_collectionView)) else { return }
-      if !_isZooming {
-        _isListColelctionViewIsZooming = true
-        var currentContentOffset = _collectionView.contentOffset
-        if currentContentOffset.x > 0 && currentContentOffset.x < _collectionView.contentSize.width {
-          currentContentOffset = CGPointMake(currentContentOffset.x - _itemWidth / 2 - (margin + lineSpacing), 0)
-        }
-        _zoomingCollectionView(currentContentOffset)
-      }
-      
-      let delayTime = dispatch_time(DISPATCH_TIME_NOW, Int64(0.25 * Double(NSEC_PER_SEC)))
-      dispatch_after(delayTime, dispatch_get_main_queue()) {
-        guard let tasksCell = self._collectionView.cellForItemAtIndexPath(listIndexPath) as? TasksCollectionViewCell else { return }
-        self._collectionView.scrollsToTop = false
-        self._draggingListCell = tasksCell
-        self._snapshotView = tasksCell.contentView.snapshotViewAfterScreenUpdates(false)
-        self._snapshotView?.backgroundColor = UIColor.orangeColor()
-        self.view.addSubview(self._snapshotView!)
-        
-        tasksCell.contentView.hidden = true
-        let point = longPressGuesture.locationInView(self.view)
-        let cellFrame = tasksCell.frame
-        let cellFinalRect = self.view.convertRect(cellFrame, fromView: self._collectionView)
-        
-        self._snapshotView?.frame = CGRectMake(cellFinalRect.origin.x, cellFinalRect.origin.y, (tasksCell.frame.size.width ?? 0) * self.kZoomScale, (tasksCell.frame.size.height ?? 0) * self.kZoomScale)
-        self._snapshotView?.transform = CGAffineTransformMakeRotation(0.1) //使用它时，不能改变frame, 只能通过center 来改变平移时的位置
-        self._saveTapPoint = point
-        self._draggingCollectionViewCellLocation = self._snapshotView!.center
-        self._lastDragging = (listIndexPath, taskIndexPath)
-      }
-    case .Changed:
-      if _snapshotView == nil {
-        return
-      }
-      _collectionView.touchRectDidChanged((_snapshotView?.frame)!)
-      guard let (_, taskIndexPath) = _taskIndexPath(atPoint: longPressGuesture.locationInView(_collectionView)) else { return }
-      let point = longPressGuesture.locationInView(view)
-      
-      let translationPoint = point.x - _saveTapPoint.x
-      if translationPoint > 0 {
-        _ScrollToLeftDirection = false
-      } else {
-        _ScrollToLeftDirection = true
-      }
-      _snapshotView?.center.x = translationPoint + _draggingCollectionViewCellLocation.x
-      _snapshotView?.center.y = point.y - _saveTapPoint.y + _draggingCollectionViewCellLocation.y
-      
-      
-      guard let oldListIndexPath = _lastDragging?.listIndexPath else { return }
-      
-      guard let collectionIndexPath = _collectionView.indexPathForItemAtPoint(longPressGuesture.locationInView(_collectionView)) else { return }
-      _lastDragging = (collectionIndexPath, taskIndexPath)
-      _isCollectionViewIndexPathChanged = true
-      
-      guard !oldListIndexPath.isEqual(collectionIndexPath) else { return }
-      swap(&_taskLists[oldListIndexPath.item], &_taskLists[collectionIndexPath.item])
-      _collectionView.moveItemAtIndexPath(collectionIndexPath, toIndexPath: oldListIndexPath)
-    case .Failed, .Cancelled, .Ended:
-      _draggingListCell?.contentView.hidden = false
-      _draggingListCell = nil
-      _collectionView.stopAutoScroll()
-      
-      if _snapshotView == nil {
-        return
-      }
-      _snapshotView?.transform = CGAffineTransformIdentity
-      _snapshotView?.removeFromSuperview()
-      _snapshotView = nil
-      
-      if _isListColelctionViewIsZooming {
-        guard let indexpath = _lastDragging?.listIndexPath else {
-          _isListColelctionViewIsZooming = false
-          _isCollectionViewIndexPathChanged = false
-          return
-        }
-        var rebackRow = 0
-        if _isCollectionViewIndexPathChanged {
-          if indexpath.row == (_collectionView.numberOfItemsInSection(0) - 1) || indexpath.row == 0 || _ScrollToLeftDirection {
-            rebackRow = indexpath.row
-          } else  {
-            rebackRow = indexpath.row - 1
-          }
-        } else {
-          rebackRow = indexpath.row
-        }
-        _currentIndexPath = NSIndexPath(forItem: rebackRow, inSection: 0)
-        _zoomingCollectionView()
-        _isListColelctionViewIsZooming = false
-        _isCollectionViewIndexPathChanged = false
-      }
-      
-    default:
-      break
-    }
   }
 }
 
@@ -403,7 +285,7 @@ extension TaskBoardViewController: UIScrollViewDelegate {
   func scrollViewDidScroll(scrollView: UIScrollView) {
     if scrollView == _pageScrollView { //ignore collection view scrolling callbacks
       var contentOffset = scrollView.contentOffset
-      contentOffset.x = contentOffset.x - _collectionView.contentInset.left
+      contentOffset.x -= _collectionView.contentInset.left
       _collectionView.contentOffset = contentOffset
     }
   }
@@ -413,42 +295,10 @@ extension TaskBoardViewController {
   
   //MARK: - Private
   
-  private func _scrollToPage(atPosition targetOffsetX: CGFloat) {
-    if _isZooming { return }
-    
-    let pageWidth: CGFloat = kScreenWidth - 2 * margin - lineSpacing
-    let currentOffsetX = _collectionView.contentOffset.x
-    var newTargetOffsetX: CGFloat = 0
-    
-    if targetOffsetX > currentOffsetX {
-      newTargetOffsetX = CGFloat(ceilf(Float(currentOffsetX / pageWidth))) * pageWidth
-    } else if targetOffsetX < currentOffsetX {
-      newTargetOffsetX = CGFloat(floorf(Float(currentOffsetX / pageWidth))) * pageWidth
-    } else { // targetOffsetX == currentOffsetX
-      if currentOffsetX % pageWidth > pageWidth * 0.5 {
-        newTargetOffsetX = CGFloat(ceilf(Float(currentOffsetX / pageWidth))) * pageWidth
-      } else {
-        newTargetOffsetX = CGFloat(floorf(Float(currentOffsetX / pageWidth))) * pageWidth
-      }
-      return
-    }
-    
-    if newTargetOffsetX < 0 {
-      newTargetOffsetX = 0
-    } else if newTargetOffsetX > _collectionView.contentSize.width {
-      newTargetOffsetX = _collectionView.contentSize.width
-    }
-    
-    _collectionView.setContentOffset(CGPoint(x: newTargetOffsetX, y: 0), animated: true)
-    
-    lastProposedContentOffsetX = newTargetOffsetX
-  }
-  
   @objc
   private func _collectionViewDidLongPressed(gestureRecognizer: UILongPressGestureRecognizer) {
     switch gestureRecognizer.state {
     case .Began:
-      
       guard let (listIndexPath, taskIndexPath) = _taskIndexPath(atPoint: gestureRecognizer.locationInView(_collectionView)) else { return }
       
       debugPrint("======  listIndexPath: \(listIndexPath.item)")
@@ -459,51 +309,69 @@ extension TaskBoardViewController {
       
       taskCell.contentView.hidden = true
       _draggingTaskCell = taskCell
+      
       _snapshotView = taskCell.contentView.snapshotViewAfterScreenUpdates(false)
-      _snapshotView?.backgroundColor = UIColor.orangeColor()
-      view.addSubview(_snapshotView!)
+      
+      guard let snapshotView = _snapshotView else { return }
+      
+      snapshotView.backgroundColor = UIColor.orangeColor()
+      view.addSubview(snapshotView)
+      
+      let touchPoint = gestureRecognizer.locationInView(view)
+      let taskCellCenter = view.convertPoint(taskCell.center, fromView: tasksTableView)
+      _draggingOffset = CGPoint(x: taskCellCenter.x - touchPoint.x, y: taskCellCenter.y - touchPoint.y)
+      
       if _isZooming {
-        _snapshotView?.transform = CGAffineTransformMakeScale(kZoomScale, kZoomScale)
+        snapshotView.frame.size.width *= kZoomScale
+        snapshotView.frame.size.height *= kZoomScale
       }
-      _snapshotView?.center = gestureRecognizer.locationInView(view)
+      snapshotView.center = taskCellCenter
+
+      UIView.animateWithDuration(0.25, animations: {
+        snapshotView.transform = CGAffineTransformMakeRotation(0.05)
+      })
+      
       _lastDragging = (listIndexPath, taskIndexPath)
+      
+      _setPageable(false)
       
       debugPrint("BEGAN....")
     case .Changed:
       debugPrint("CHANGE....")
       
-      if _snapshotView == nil {
-        return
-      }
+      guard let snapshotView = _snapshotView else { return }
+      snapshotView.center.x = gestureRecognizer.locationInView(view).x + _draggingOffset.x
+      snapshotView.center.y = gestureRecognizer.locationInView(view).y + _draggingOffset.y
       
-      _collectionView.touchRectDidChanged((_snapshotView?.frame)!)
-      
+      _collectionView.touchRectDidChanged(snapshotView.frame)
+
       guard let (listIndexPath, taskIndexPath) = _taskIndexPath(atPoint: gestureRecognizer.locationInView(_collectionView)) else { return }
-      _snapshotView?.center = gestureRecognizer.locationInView(view)
-      
       guard let tasksCell = _collectionView.cellForItemAtIndexPath(listIndexPath) as? TasksCollectionViewCell else { return }
       guard let tasksViewController = tasksCell.tasksViewController else { return }
-      guard var tasksTableView = tasksViewController.tasksTableView else { return }
-      
-      let covertFrame = view.convertRect(_snapshotView!.frame, toView: tasksViewController.view)
-      tasksTableView.touchRectDidChanged(covertFrame)
+
       
       if _lastDragging?.listIndexPath == listIndexPath && _lastDragging?.taskIndexPath == taskIndexPath {
         return
       }
       
-      guard let _ = tasksTableView.cellForRowAtIndexPath(taskIndexPath) else { return }
-      
       guard let oldListIndexPath = _lastDragging?.listIndexPath else { return }
       guard let oldTaskIndexPath = _lastDragging?.taskIndexPath else { return }
       
       if _lastDragging?.listIndexPath == listIndexPath { // 同一列表
+        guard var tasksTableView = tasksViewController.tasksTableView else {
+          return
+        }
+        
+        let covertFrame = view.convertRect(snapshotView.frame, toView: tasksViewController.view)
+        tasksTableView.touchRectDidChanged(covertFrame)
+        
+        guard tasksTableView.cellForRowAtIndexPath(taskIndexPath) != nil else { return }
+
         swap(&_taskLists[oldListIndexPath.item].tasks[oldTaskIndexPath.row], &_taskLists[listIndexPath.item].tasks[taskIndexPath.row])
         tasksViewController.moveTask(atIndexPath: taskIndexPath, toIndexPath: oldTaskIndexPath)
         
         debugPrint("moving....................")
       } else { // 跨列表
-        
         guard let oldTasksCell = _collectionView.cellForItemAtIndexPath(oldListIndexPath) as? TasksCollectionViewCell else { return }
         guard let oldTasksVirewController = oldTasksCell.tasksViewController else { return }
         
@@ -512,7 +380,7 @@ extension TaskBoardViewController {
         
         _taskLists[oldListIndexPath.item].tasks.removeAtIndex(oldTaskIndexPath.row)
         oldTasksVirewController.removeTask(atIndexPath: oldTaskIndexPath)
-        oldTasksVirewController.updateTableViewHeight(true, additionHeight: -(_draggingTaskCell?.bounds.height ?? 0), maxHeight: _itemHeight, superViewHeight: _itemHeight)
+        oldTasksVirewController.updateTableViewHeight(true, additionHeight: -(_draggingTaskCell?.bounds.height ?? 0), maxHeight: _itemHeight - _keyboardHeight, superViewHeight: _itemHeight)
         
         let tempTasksList: [Task] = _taskLists[listIndexPath.item].tasks
         if tempTasksList.count == 0 || (taskIndexPath.row >= tempTasksList.count) {
@@ -520,24 +388,30 @@ extension TaskBoardViewController {
         } else {
           _taskLists[listIndexPath.item].tasks.insert(draggingData, atIndex: taskIndexPath.row)
         }
-
+        
         tasksViewController.insertTask(draggingData, atIndexPath: taskIndexPath)
-        tasksViewController.updateTableViewHeight(true, additionHeight: _draggingTaskCell?.bounds.height ?? 0, maxHeight: _itemHeight, superViewHeight: _itemHeight)
+        tasksViewController.updateTableViewHeight(true, additionHeight: _draggingTaskCell?.bounds.height ?? 0, maxHeight: _itemHeight - _keyboardHeight, superViewHeight: _itemHeight)
+        
+        // 防止因为cell复用导致的自动滚动的问题
+        oldTasksVirewController.tasksTableView.stopAutoScroll()
+        tasksViewController.tasksTableView.stopAutoScroll()
       }
       _lastDragging = (listIndexPath, taskIndexPath)
     case .Failed, .Cancelled, .Ended:
       debugPrint("END....")
-      NSNotificationCenter.defaultCenter().postNotificationName("tableviewStopAutoScroll", object: self, userInfo: nil)
+      
+      if _snapshotView == nil { return }
+      
+      NSNotificationCenter.defaultCenter().postNotificationName(kTaskTableViewShouldStopAutoScrollNotification, object: self, userInfo: nil)
       _collectionView.stopAutoScroll()
-      if _snapshotView == nil {
-        return
-      }
+      
+      _scrollToCorrectPage(atPosition: _collectionView.contentOffset.x)
+      _setPageable(!_isZooming)
       
       _snapshotView?.removeFromSuperview()
       _snapshotView = nil
       
       _draggingTaskCell?.contentView.hidden = false
-      _draggingTaskCell = nil
       
       guard let oldTasksCell = _collectionView.cellForItemAtIndexPath(_lastDragging!.listIndexPath) as? TasksCollectionViewCell else { return }
       guard let oldTasksVirewController = oldTasksCell.tasksViewController else { return }
@@ -551,43 +425,112 @@ extension TaskBoardViewController {
     }
   }
   
+  @objc
+  private func _listHeadViewLongPressGuestureAction(longPressGuesture: UILongPressGestureRecognizer) {
+    switch longPressGuesture.state {
+    case .Began:
+      guard let (listIndexPath, taskIndexPath) = _taskIndexPath(atPoint: longPressGuesture.locationInView(_collectionView)) else { return }
+      
+      func beginDragging() {
+        guard let tasksCell = _collectionView.cellForItemAtIndexPath(listIndexPath) as? TasksCollectionViewCell else { return }
+        tasksCell.contentView.hidden = true
+        
+        _snapshotView = tasksCell.contentView.snapshotViewAfterScreenUpdates(false)
+        guard let snapshotView = _snapshotView else { return }
+        
+        _collectionView.scrollsToTop = false
+        _draggingListCell = tasksCell
+        snapshotView.backgroundColor = UIColor.orangeColor()
+        view.addSubview(snapshotView)
+       
+        let touchPoint = longPressGuesture.locationInView(view)
+        let taskListCenter = view.convertPoint(tasksCell.center, fromView: _collectionView)
+        _draggingOffset = CGPoint(x: taskListCenter.x - touchPoint.x, y: taskListCenter.y - touchPoint.y)
+        
+        snapshotView.frame.size.width *= kZoomScale
+        snapshotView.frame.size.height *= kZoomScale
+        snapshotView.center = taskListCenter
+
+        UIView.animateWithDuration(0.25, animations: {
+          snapshotView.transform = CGAffineTransformMakeRotation(0.05) //使用它时，不能改变frame, 只能通过center 来改变平移时的位置
+        })
+
+        _lastDragging = (listIndexPath, taskIndexPath)
+      }
+      
+      if !_isZooming {
+        _isZoomForDragList = true
+        var currentContentOffset = _collectionView.contentOffset
+        if currentContentOffset.x > 0 && currentContentOffset.x < _collectionView.contentSize.width {
+          currentContentOffset = CGPointMake(currentContentOffset.x - _itemWidth / 2 - (margin + lineSpacing), 0)
+        }
+        _zoomCollectionView(touchAt: currentContentOffset, completion: {
+          beginDragging()
+        })
+      } else {
+        beginDragging()
+      }
+    case .Changed:
+      guard let snapshotView = _snapshotView else { return }
+      
+      _collectionView.touchRectDidChanged(snapshotView.frame)
+      
+      guard let (_, taskIndexPath) = _taskIndexPath(atPoint: longPressGuesture.locationInView(_collectionView)) else { return }
+      let touchPoint = longPressGuesture.locationInView(view)
+      
+      snapshotView.center.x = touchPoint.x + _draggingOffset.x
+      snapshotView.center.y = touchPoint.y + _draggingOffset.y
+      
+      guard let oldListIndexPath = _lastDragging?.listIndexPath else { return }
+      
+      guard let collectionIndexPath = _collectionView.indexPathForItemAtPoint(longPressGuesture.locationInView(_collectionView)) else { return }
+      
+      if oldListIndexPath.isEqual(collectionIndexPath) { return }
+      
+      swap(&_taskLists[oldListIndexPath.item], &_taskLists[collectionIndexPath.item])
+      _collectionView.moveItemAtIndexPath(collectionIndexPath, toIndexPath: oldListIndexPath)
+      
+      _lastDragging = (collectionIndexPath, taskIndexPath)
+    case .Failed, .Cancelled, .Ended:
+      _draggingListCell?.contentView.hidden = false
+      _draggingListCell = nil
+      _collectionView.stopAutoScroll()
+      
+      _snapshotView?.transform = CGAffineTransformIdentity
+      _snapshotView?.removeFromSuperview()
+      _snapshotView = nil
+      
+      if _isZoomForDragList {
+        _zoomCollectionView()
+        _isZoomForDragList = false
+      }
+      
+    default:
+      break
+    }
+  }
+  
   /**
    CollectionView tapGesture event
    
    - parameter gestureRecognizer:
    */
   @objc
-  private func _collectionViewDidTap(gestureRecognizer: UITapGestureRecognizer) {
-    var currentContentOffset = _collectionView.contentOffset
-    let point = gestureRecognizer.locationInView(_collectionView)
-    if _isZooming {
-      let tapPoint = CGPointMake(point.x + (margin + lineSpacing) / 2, point.y)
-      _currentIndexPath = self._collectionView.indexPathForItemAtPoint(tapPoint)
-      if _currentIndexPath == nil {
-        let lastPoint = CGPointMake(tapPoint.x - (self.margin + self.lineSpacing) / 2, tapPoint.y)
-        _currentIndexPath = self._collectionView.indexPathForItemAtPoint(lastPoint)
-      }
-      if _currentIndexPath == nil {
-        return
-      }
-      _zoomingCollectionView()
-      
-    } else {
-      if currentContentOffset.x > 0 && currentContentOffset.x < _collectionView.contentSize.width {
-        currentContentOffset = CGPointMake(currentContentOffset.x - _itemWidth / 2 - (margin + lineSpacing), 0)
-      }
-      _zoomingCollectionView(currentContentOffset)
-    }
+  private func _collectionViewDidTapped(gestureRecognizer: UITapGestureRecognizer) {
+    _zoomCollectionView(touchAt: gestureRecognizer.locationInView(_collectionView))
   }
   
   /**
    CollectionView Zooming event
    
+   - parameter touchAt: touch point on collectionView
    */
-  
-  private func _zoomingCollectionView(currentPoint: CGPoint = CGPointZero) {
-    if _isZooming {
+  private func _zoomCollectionView(touchAt touchPoint: CGPoint=CGPoint.zero, completion: (() -> Void)?=nil) {
+    if _isZooming { // Back to origin state
       self._isZooming = false
+      
+      let page: Int? = _taskListIndexPath(atPoint: touchPoint)?.item
+      
       UIView.animateWithDuration(0.25, delay: 0, options: .CurveEaseInOut, animations: {
         
         self._collectionView.frame.origin.x += self._collectionView.frame.width * self.kZoomScale * self.kZoomScale
@@ -600,15 +543,15 @@ extension TaskBoardViewController {
         self._collectionView.collectionViewLayout.invalidateLayout()
         self._collectionView.reloadData()
         
+        self._scrollToCorrectPage(atPosition: self._collectionView.contentOffset.x / self.kZoomScale, page: page)
+        
         self._collectionView.transform = CGAffineTransformIdentity
         
-      }) { (finished:Bool) in
-        self._setPageable(true)
-        guard let indexpath = self._currentIndexPath else { return }
-        let offsetPoint = CGPointMake(CGFloat(indexpath.row) * (self.lineSpacing + self._itemWidth), 0)
-        self._collectionView.setContentOffset(offsetPoint, animated: false)
+      }) { (finished: Bool) in
+        self._setPageable(self._screenDirection == .vertical)
+        completion?()
       }
-    } else {
+    } else { // Zooming
       self._isZooming = true
       UIView.animateWithDuration(0.25, delay: 0, options: .CurveEaseInOut, animations: {
         
@@ -620,11 +563,12 @@ extension TaskBoardViewController {
         
         self._collectionViewFlowLayout.itemSize.height = self._itemHeight
         self._collectionView.reloadData()
+        self._collectionView.contentOffset = CGPoint(x: self._collectionView.contentOffset.x / self.kZoomScale, y: 0)
         
         self._collectionView.transform = CGAffineTransformMakeScale(self.kZoomScale, self.kZoomScale)
-        self._collectionView.setContentOffset(currentPoint, animated: false)
       }) { (finished:Bool) in
         self._setPageable(false)
+        completion?()
       }
     }
   }
@@ -642,38 +586,57 @@ extension TaskBoardViewController {
     
     guard let tasksViewController = tasksCell.tasksViewController else { return nil }
     guard let tasksTableView = tasksCell.tasksViewController?.tasksTableView else { return nil }
-    guard let listHeaderView = tasksCell.tasksViewController?._listHeaderView else { return nil}
-    guard let listFooterView = tasksCell.tasksViewController?._listFooterView else { return nil}
+    guard let listHeaderView = tasksCell.tasksViewController?.listHeaderView else { return nil}
+    guard let listFooterView = tasksCell.tasksViewController?.listFooterView else { return nil}
     
     let tableViewPoint = _collectionView.convertPoint(point, toView: tasksTableView)
     let taskViewControllerPoint = _collectionView.convertPoint(point, toView: tasksViewController.view)
     
-    if (CGRectContainsPoint(listHeaderView.frame, taskViewControllerPoint)) {
-      return (listIndexPath, NSIndexPath(forRow: -1, inSection: 0))
-    } else if (CGRectContainsPoint(listFooterView.frame, taskViewControllerPoint)) {
-      let rows = tasksTableView.numberOfRowsInSection(0)
-      return (listIndexPath, NSIndexPath(forRow: rows, inSection: 0))
+    if listHeaderView.frame.contains(taskViewControllerPoint) {
+      return (listIndexPath, NSIndexPath(forRow: 0, inSection: 0))
+    } else if listFooterView.frame.contains(taskViewControllerPoint) {
+      let row = tasksTableView.numberOfRowsInSection(0)
+      return (listIndexPath, NSIndexPath(forRow: row, inSection: 0))
     } else {
       guard let taskIndexPath = tasksTableView.indexPathForRowAtPoint(tableViewPoint) else {
-        return (listIndexPath, NSIndexPath(forRow: -1, inSection: 0))
+        return nil
       }
       return (listIndexPath, taskIndexPath)
     }
   }
   
+  private func _taskListIndexPath(atPoint point: CGPoint) -> NSIndexPath? {
+    return _collectionView.indexPathForItemAtPoint(point)
+  }
+  
   private func _setPageable(pageable: Bool) {
     var pageable = pageable
-    if UIDevice.currentDevice().userInterfaceIdiom == .Pad {
+    if UIDevice.currentDevice().userInterfaceIdiom == .Pad || _screenDirection == .horizontal || _isZooming {
       pageable = false
     }
     
     if pageable {
-      _collectionView.addGestureRecognizer(self._pageScrollView.panGestureRecognizer)
+      _collectionView.addGestureRecognizer(_pageScrollView.panGestureRecognizer)
     } else {
-      _collectionView.removeGestureRecognizer(self._pageScrollView.panGestureRecognizer)
+      _collectionView.removeGestureRecognizer(_pageScrollView.panGestureRecognizer)
     }
-    _collectionView.panGestureRecognizer.enabled = !pageable
     
+    _collectionView.panGestureRecognizer.enabled = !pageable
     _collectionView.showsHorizontalScrollIndicator = !pageable
+  }
+  
+  private func _scrollToCorrectPage(atPosition targetOffsetX: CGFloat, page: Int?=nil, animated: Bool=true) {
+    if UIDevice.currentDevice().userInterfaceIdiom == .Pad || _isZooming { return }
+
+    var correctPage: Int = 0
+    if page != nil {
+      correctPage = page!
+    } else {
+      correctPage = Int(round(_collectionView.contentOffset.x / _pageScrollView.bounds.width))
+    }
+    
+    let contentOffsetX = CGFloat(correctPage) * _pageScrollView.bounds.width
+    _pageScrollView.contentOffset.x = contentOffsetX
+    _collectionView.setContentOffset(CGPoint(x: contentOffsetX, y: 0), animated: animated)
   }
 }

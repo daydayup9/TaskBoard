@@ -56,7 +56,6 @@ extension AutoScrollManager {
   
   @objc
   private func _scrollSpeedDidChanged() {
-    debugPrint("活肤")
     let leftInset = scrollViewRect.minX - touchRect.minX
     let rightInset = scrollViewRect.maxX - touchRect.maxX
     

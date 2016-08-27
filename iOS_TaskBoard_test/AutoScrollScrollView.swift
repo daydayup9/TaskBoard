@@ -17,7 +17,6 @@ extension AutoScrollScrollView where Self: UIScrollView {
   mutating func touchRectDidChanged(touchRect: CGRect) {
     if autoScrollManager == nil {
       autoScrollManager = AutoScrollManager()
-      autoScrollManager?.scrollViewRect = frame
       autoScrollManager?.shouldScroll = { [weak self](scrollDistance: CGFloat, scrollDirection: AutoScrollManager.ScrollDirection) in
         guard let weakSelf = self else { return }
         
@@ -36,7 +35,7 @@ extension AutoScrollScrollView where Self: UIScrollView {
               return
             }
           }
-          self?.contentOffset.x -= scrollDistance
+          self?.contentOffset.x -= scrollDistance / weakSelf.transform.a
         case .vertical:
           
           if scrollDistance > 0 {
@@ -52,11 +51,12 @@ extension AutoScrollScrollView where Self: UIScrollView {
               return
             }
           }
-          weakSelf.contentOffset.y -= scrollDistance
+          weakSelf.contentOffset.y -= scrollDistance / weakSelf.transform.d
         }
       }
     }
-    
+
+    autoScrollManager?.scrollViewRect = frame
     autoScrollManager?.touchRect = touchRect
   }
     
