@@ -88,7 +88,6 @@ class TaskBoardViewController: UIViewController {
   private var _keyboardMan: KeyboardMan?
   private var _isZooming: Bool = false
   private var _isZoomForDragList: Bool = false
-//  private var _scrollToLeftDirection: Bool = false
   
   private var _draggingOffset: CGPoint = CGPoint.zero
   
@@ -98,7 +97,6 @@ class TaskBoardViewController: UIViewController {
     }
     return kScreenWidth - 2 * (margin + lineSpacing)
   }
-  
   private var _pageWidth: CGFloat {
     if UIDevice.currentDevice().userInterfaceIdiom == .Pad {
       return 375 - 2 * margin - lineSpacing
@@ -120,7 +118,7 @@ class TaskBoardViewController: UIViewController {
   
   override func viewDidLoad() {
     super.viewDidLoad()
-    for index in 0...7 {
+    for index in 0..<8 {
       var numbers = 0
       
       if index == 0 {
@@ -148,7 +146,6 @@ class TaskBoardViewController: UIViewController {
     let horizontalInset = margin + lineSpacing
     
     _collectionViewFlowLayout = UICollectionViewFlowLayout()
-    _collectionViewFlowLayout.itemSize = CGSize(width: _itemWidth, height: _itemHeight)
     _collectionViewFlowLayout.scrollDirection = .Horizontal
     _collectionViewFlowLayout.minimumLineSpacing = lineSpacing
     _collectionViewFlowLayout.sectionInset = UIEdgeInsets(top: top, left: horizontalInset, bottom: bootom, right: horizontalInset)
@@ -168,15 +165,22 @@ class TaskBoardViewController: UIViewController {
     _collectionView.backgroundColor = UIColor.cyanColor()
     
     _screenDirection = kScreenWidth < kScreenHeight ? .vertical : .horizontal
-    _collectionView.showsHorizontalScrollIndicator = _screenDirection == .horizontal
     
-    _pageScrollView = UIScrollView(frame: CGRect(x: margin + lineSpacing, y: 0, width: _pageWidth, height: 0.1))
-    _pageScrollView.contentSize = CGSize(width: CGFloat(_taskLists.count) * _pageWidth, height: 0.1)
+    _pageScrollView = UIScrollView(frame: CGRect(x: margin + lineSpacing, y: 64, width: _pageWidth, height: 10))
+    _pageScrollView.contentSize = CGSize(width: CGFloat(_collectionView.numberOfItemsInSection(0)) * _pageWidth, height: 0.1)
     _pageScrollView.pagingEnabled = true
     _pageScrollView.delegate = self
     
+//    _collectionView.frame.size.width = _pageScrollView.contentSize.width + 2 * margin + lineSpacing
+//    _collectionView.contentSize.width = _pageScrollView.contentSize.width + 2 * margin + lineSpacing
+    
+//    _collectionView.frame.size.width /= kZoomScale
+    
+    _collectionView.panGestureRecognizer.enabled = false
+    _collectionView.addGestureRecognizer(_pageScrollView.panGestureRecognizer)
+    
     view.addSubview(_pageScrollView)
-    _pageScrollView.backgroundColor = UIColor.orangeColor()
+    _pageScrollView.backgroundColor = UIColor.yellowColor()
     
     _setPageable(true)
     
@@ -215,7 +219,7 @@ extension TaskBoardViewController {
   
   override func viewWillTransitionToSize(size: CGSize, withTransitionCoordinator coordinator: UIViewControllerTransitionCoordinator) {
     _screenDirection = size.width < size.height ? .vertical : .horizontal
-    
+
     if _screenDirection == .vertical {
       _scrollToCorrectPage(atPosition: _collectionView.contentOffset.x)
     }
@@ -235,13 +239,17 @@ extension TaskBoardViewController {
         width = self.kScreenHeight
         height = self.kScreenWidth - y
       }
+
       self._collectionView.frame.origin.y = y
       self._collectionView.frame.size.width = width
       self._collectionView.frame.size.height = height
     }
     self._collectionViewFlowLayout.itemSize.height = self._itemHeight
     self._collectionView.collectionViewLayout.invalidateLayout()
-    self._collectionView.reloadData()
+//    self._collectionView.reloadData()
+    NSNotificationCenter.defaultCenter().postNotificationName(kTaskListHeightDidChangedNotification, object: nil, userInfo: ["max_height": _itemHeight, "super_view_height": _itemHeight])
+    
+//    _pageScrollView.contentSize.width = _pageWidth * CGFloat(_collectionView.numberOfItemsInSection(0))
   }
 }
 
@@ -254,6 +262,8 @@ extension TaskBoardViewController: UICollectionViewDataSource, UICollectionViewD
   }
   
   func collectionView(collectionView: UICollectionView, cellForItemAtIndexPath indexPath: NSIndexPath) -> UICollectionViewCell {
+    debugPrint("cellForItemAtIndexPath \(indexPath.item)" )
+    
     if canAddList && indexPath.item == collectionView.numberOfItemsInSection(0) - 1 {
       let cell = collectionView.dequeueReusableCellWithReuseIdentifier(kAddTaskListCellID, forIndexPath: indexPath) as! AddTaskListCollectionViewCell
       
@@ -276,6 +286,18 @@ extension TaskBoardViewController: UICollectionViewDataSource, UICollectionViewD
   func collectionView(collectionView: UICollectionView, canMoveItemAtIndexPath indexPath: NSIndexPath) -> Bool {
     return true
   }
+  
+  
+  //MARK: - UICollectionViewDelegateFlowLayout
+  
+  func collectionView(collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAtIndexPath indexPath: NSIndexPath) -> CGSize {
+    
+//    if canAddList && indexPath.item == collectionView.numberOfItemsInSection(0) - 1 {
+//      return CGSize(width: _itemWidth, height: 60)
+//    }
+    
+    return CGSize(width: _itemWidth, height: _itemHeight)
+  }
 }
 
 extension TaskBoardViewController: UIScrollViewDelegate {
@@ -284,9 +306,9 @@ extension TaskBoardViewController: UIScrollViewDelegate {
   
   func scrollViewDidScroll(scrollView: UIScrollView) {
     if scrollView == _pageScrollView { //ignore collection view scrolling callbacks
-      var contentOffset = scrollView.contentOffset
-      contentOffset.x -= _collectionView.contentInset.left
-      _collectionView.contentOffset = contentOffset
+      _collectionView.contentOffset.x = scrollView.contentOffset.x
+      
+      debugPrint("************************** \(_collectionView.contentOffset.x)")
     }
   }
 }
@@ -501,7 +523,7 @@ extension TaskBoardViewController {
       _snapshotView = nil
       
       if _isZoomForDragList {
-        _zoomCollectionView()
+        _zoomCollectionView(touchAt: longPressGuesture.locationInView(_collectionView))
         _isZoomForDragList = false
       }
       
@@ -531,21 +553,25 @@ extension TaskBoardViewController {
       
       let page: Int? = _taskListIndexPath(atPoint: touchPoint)?.item
       
+
+      
+      NSNotificationCenter.defaultCenter().postNotificationName(kTaskListHeightDidChangedNotification, object: nil, userInfo: ["max_height": _itemHeight, "super_view_height": _itemHeight])
+      
       UIView.animateWithDuration(0.25, delay: 0, options: .CurveEaseInOut, animations: {
-        
+        self._collectionView.transform = CGAffineTransformIdentity
+
         self._collectionView.frame.origin.x += self._collectionView.frame.width * self.kZoomScale * self.kZoomScale
         self._collectionView.frame.origin.y += self._collectionView.frame.height * self.kZoomScale * self.kZoomScale
-        
+
         self._collectionView.frame.size.width *= self.kZoomScale
         self._collectionView.frame.size.height *= self.kZoomScale
-        
+
         self._collectionViewFlowLayout.itemSize.height = self._itemHeight
         self._collectionView.collectionViewLayout.invalidateLayout()
-        self._collectionView.reloadData()
-        
-        self._scrollToCorrectPage(atPosition: self._collectionView.contentOffset.x / self.kZoomScale, page: page)
-        
-        self._collectionView.transform = CGAffineTransformIdentity
+
+        if self._screenDirection == .vertical {
+          self._scrollToCorrectPage(atPosition: self._collectionView.contentOffset.x / self.kZoomScale, page: page)
+        }
         
       }) { (finished: Bool) in
         self._setPageable(self._screenDirection == .vertical)
@@ -553,19 +579,22 @@ extension TaskBoardViewController {
       }
     } else { // Zooming
       self._isZooming = true
+      
+      NSNotificationCenter.defaultCenter().postNotificationName(kTaskListHeightDidChangedNotification, object: nil, userInfo: ["max_height": _itemHeight, "super_view_height": _itemHeight])
+      
       UIView.animateWithDuration(0.25, delay: 0, options: .CurveEaseInOut, animations: {
-        
+        self._collectionView.transform = CGAffineTransformMakeScale(self.kZoomScale, self.kZoomScale)
+
         self._collectionView.frame.origin.x -= self._collectionView.frame.width * self.kZoomScale
         self._collectionView.frame.origin.y -= self._collectionView.frame.height * self.kZoomScale
-        
+
         self._collectionView.frame.size.width /= self.kZoomScale
         self._collectionView.frame.size.height /= self.kZoomScale
-        
+
         self._collectionViewFlowLayout.itemSize.height = self._itemHeight
-        self._collectionView.reloadData()
-        self._collectionView.contentOffset = CGPoint(x: self._collectionView.contentOffset.x / self.kZoomScale, y: 0)
+        self._collectionViewFlowLayout.invalidateLayout()
+//        self._collectionView.contentOffset = CGPoint(x: self._collectionView.contentOffset.x / self.kZoomScale, y: 0)
         
-        self._collectionView.transform = CGAffineTransformMakeScale(self.kZoomScale, self.kZoomScale)
       }) { (finished:Bool) in
         self._setPageable(false)
         completion?()
@@ -615,6 +644,10 @@ extension TaskBoardViewController {
       pageable = false
     }
     
+//    _pageScrollView.pagingEnabled = pageable
+//    _setPageScrollViewContentSize()
+
+    
     if pageable {
       _collectionView.addGestureRecognizer(_pageScrollView.panGestureRecognizer)
     } else {
@@ -638,5 +671,26 @@ extension TaskBoardViewController {
     let contentOffsetX = CGFloat(correctPage) * _pageScrollView.bounds.width
     _pageScrollView.contentOffset.x = contentOffsetX
     _collectionView.setContentOffset(CGPoint(x: contentOffsetX, y: 0), animated: animated)
+  }
+  
+  private func _setPageScrollViewContentSize() {
+    let originContentWidth = _pageScrollView.frame.width * CGFloat(_collectionView.numberOfItemsInSection(0))
+    let contentOffsetX = _pageScrollView.contentOffset.x
+    
+    if _isZooming || _screenDirection == .horizontal {
+      let screenWidth: CGFloat
+      switch _screenDirection {
+      case .horizontal:
+        screenWidth = kScreenHeight
+      case .vertical:
+        screenWidth = kScreenWidth
+      }
+      _pageScrollView.contentSize.width = originContentWidth - (screenWidth / _collectionView.transform.a - _pageScrollView.frame.width - margin - 2 * lineSpacing)
+    } else {
+      _pageScrollView.contentSize.width = originContentWidth
+    }
+    
+    _pageScrollView.contentOffset.x = min(contentOffsetX, _pageScrollView.contentSize.width)
+    _collectionView.contentOffset.x = min(contentOffsetX, _pageScrollView.contentSize.width)
   }
 }
