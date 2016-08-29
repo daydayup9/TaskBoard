@@ -75,12 +75,12 @@ class TaskBoardViewController: UIViewController {
   private var _snapshotView: UIView?
   private var _draggingTaskCell: TaskTableViewCell?
   private var _draggingListCell: TasksCollectionViewCell?
-
+  
   private var _lastDragging: (listIndexPath: NSIndexPath, taskIndexPath: NSIndexPath)?
   
-//  private var _taskLists:[[String]] = []
+  //  private var _taskLists:[[String]] = []
   
-    private var _taskLists: [TaskList] = []
+  private var _taskLists: [TaskList] = []
   
   private var _keyboardMan: KeyboardMan!
   private var _isZooming: Bool = false
@@ -119,43 +119,43 @@ class TaskBoardViewController: UIViewController {
   
   override func viewDidLoad() {
     super.viewDidLoad()
-        for index in 0...7 {
-          var numbers = 0
-    
-          if index == 0 {
-            numbers = 6
-          } else if index == 1 {
-            numbers = 32
-          } else if index == 2 || index == 6 {
-            numbers = 8
-          } else if index == 3 || index == 4 {
-            numbers == 13
-          } else {
-            numbers = 5
-          }
-          var tasks: [Task] = []
-    
-    
-          for number in 0...numbers {
-            let task = Task(title: "\(number)", hidden: false)
-           tasks.append(task)
-          }
-          
-//    taskLists.append()
-          _taskLists.append(TaskList(name: "新建任务\(index)", hidden: false, tasks: tasks))
-        }
+    for index in 0...7 {
+      var numbers = 0
+      
+      if index == 0 {
+        numbers = 6
+      } else if index == 1 {
+        numbers = 32
+      } else if index == 2 || index == 6 {
+        numbers = 8
+      } else if index == 3 || index == 4 {
+        numbers == 13
+      } else {
+        numbers = 5
+      }
+      var tasks: [Task] = []
+      
+      
+      for number in 0...numbers {
+        let task = Task(title: "\(number)", hidden: false)
+        tasks.append(task)
+      }
+      
+      //    taskLists.append()
+      _taskLists.append(TaskList(name: "新建任务\(index)", hidden: false, tasks: tasks))
+    }
     //
     //    taskLists = _taskLists
     
-//    _taskLists = [
-//      ["1", "2", "3", "4", "5", "6"],
-//      ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "13", "14", "15", "16", "13", "14", "15", "16", "13", "14", "15", "16", "13", "14", "15", "16", "13", "14", "15", "16"],
-//      ["1", "2", "3", "4", "5", "6", "7", "8"],
-//      ["1", "2", "3", "4", "5", "6", "7", "8", "4", "5", "6", "7", "8"],
-//      ["1", "2", "3", "4", "5", "6", "7"],
-//      ["1", "2", "3", "4", "5", "6", "7", "8", "4", "5", "6", "7", "8"],
-//      ["1", "2", "3", "4", "5", "6", "7", "8"]
-//    ]
+    //    _taskLists = [
+    //      ["1", "2", "3", "4", "5", "6"],
+    //      ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "13", "14", "15", "16", "13", "14", "15", "16", "13", "14", "15", "16", "13", "14", "15", "16", "13", "14", "15", "16"],
+    //      ["1", "2", "3", "4", "5", "6", "7", "8"],
+    //      ["1", "2", "3", "4", "5", "6", "7", "8", "4", "5", "6", "7", "8"],
+    //      ["1", "2", "3", "4", "5", "6", "7"],
+    //      ["1", "2", "3", "4", "5", "6", "7", "8", "4", "5", "6", "7", "8"],
+    //      ["1", "2", "3", "4", "5", "6", "7", "8"]
+    //    ]
     
     let horizontalInset = margin + lineSpacing
     
@@ -282,7 +282,7 @@ extension TaskBoardViewController: UICollectionViewDataSource, UICollectionViewD
     cell.tasksViewController?.setupData(_taskLists[indexPath.item].tasks, maxHeight: _itemHeight - _keyboardHeight, superViewHeight: _itemHeight)
     cell.tasksViewController?.listHeaderViewLongPressActionClosure = { [weak self](longPressGuesture: UILongPressGestureRecognizer) in
       guard let weakSelf = self  else { return }
-     weakSelf._listHeadViewLongGuestureAction(longPressGuesture)
+      weakSelf._listHeadViewLongGuestureAction(longPressGuesture)
     }
     return cell
   }
@@ -362,36 +362,45 @@ extension TaskBoardViewController {
       _collectionView.stopAutoScroll()
       
       if _snapshotView == nil {
+        let delayTime = dispatch_time(DISPATCH_TIME_NOW, Int64(0.25 * Double(NSEC_PER_SEC)))
+        dispatch_after(delayTime, dispatch_get_main_queue(), {
+          if self._snapshotView != nil {
+            self._headViewLongGuestureCancelled()
+          }
+        });
         return
       }
-      _snapshotView?.transform = CGAffineTransformIdentity
-      _snapshotView?.removeFromSuperview()
-      _snapshotView = nil
-      
-      if _isListColelctionViewIsZooming {
-        guard let indexpath = _lastDragging?.listIndexPath else {
-          _isListColelctionViewIsZooming = false
-          _isCollectionViewIndexPathChanged = false
-          return
-        }
-        var rebackRow = 0
-        if _isCollectionViewIndexPathChanged {
-          if indexpath.row == (_collectionView.numberOfItemsInSection(0) - 1) || indexpath.row == 0 || _ScrollToLeftDirection {
-            rebackRow = indexpath.row
-          } else  {
-            rebackRow = indexpath.row - 1
-          }
-        } else {
-          rebackRow = indexpath.row
-        }
-        _currentIndexPath = NSIndexPath(forItem: rebackRow, inSection: 0)
-        _zoomingCollectionView()
-        _isListColelctionViewIsZooming = false
-        _isCollectionViewIndexPathChanged = false
-      }
-      
+      _headViewLongGuestureCancelled()
     default:
       break
+    }
+  }
+  
+  private func _headViewLongGuestureCancelled() {
+    _snapshotView?.transform = CGAffineTransformIdentity
+    _snapshotView?.removeFromSuperview()
+    _snapshotView = nil
+    
+    if _isListColelctionViewIsZooming {
+      guard let indexpath = _lastDragging?.listIndexPath else {
+        _isListColelctionViewIsZooming = false
+        _isCollectionViewIndexPathChanged = false
+        return
+      }
+      var rebackRow = 0
+      if _isCollectionViewIndexPathChanged {
+        if indexpath.row == (_collectionView.numberOfItemsInSection(0) - 1) || indexpath.row == 0 || _ScrollToLeftDirection {
+          rebackRow = indexpath.row
+        } else  {
+          rebackRow = indexpath.row - 1
+        }
+      } else {
+        rebackRow = indexpath.row
+      }
+      _currentIndexPath = NSIndexPath(forItem: rebackRow, inSection: 0)
+      _zoomingCollectionView()
+      _isListColelctionViewIsZooming = false
+      _isCollectionViewIndexPathChanged = false
     }
   }
 }
@@ -520,7 +529,7 @@ extension TaskBoardViewController {
         } else {
           _taskLists[listIndexPath.item].tasks.insert(draggingData, atIndex: taskIndexPath.row)
         }
-
+        
         tasksViewController.insertTask(draggingData, atIndexPath: taskIndexPath)
         tasksViewController.updateTableViewHeight(true, additionHeight: _draggingTaskCell?.bounds.height ?? 0, maxHeight: _itemHeight, superViewHeight: _itemHeight)
       }
