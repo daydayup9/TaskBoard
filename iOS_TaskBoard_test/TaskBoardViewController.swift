@@ -267,8 +267,8 @@ extension TaskBoardViewController: UICollectionViewDataSource, UICollectionViewD
     
     if canAddList && indexPath.item == collectionView.numberOfItemsInSection(0) - 1 {
       let cell = collectionView.dequeueReusableCellWithReuseIdentifier(kAddTaskListCellID, forIndexPath: indexPath) as! AddTaskListCollectionViewCell
-      cell.saveNewProjectClosure = { (projectTitle: String) in
-        self._saveNewProject(projectTitle)
+      cell.saveNewTaskListsClosure = { (taskListsTitle: String) in
+        self._saveNewTaskLists(taskListsTitle)
       }
       return cell
     }
@@ -312,8 +312,8 @@ extension TaskBoardViewController {
   //MARK: - Private
   
   @objc
-  private func _saveNewProject(projectTitle: String) {
-    debugPrint("create Project: \(projectTitle)")
+  private func _saveNewTaskLists(taskListsTitle: String) {
+    debugPrint("create TaskLists: \(taskListsTitle)")
   }
   
   @objc
@@ -500,7 +500,6 @@ extension TaskBoardViewController {
       guard let snapshotView = _snapshotView else { return }
       
       _collectionView.touchRectDidChanged(snapshotView.frame)
-      
       guard let (_, taskIndexPath) = _taskIndexPath(atPoint: longPressGuesture.locationInView(_collectionView)) else { return }
       let touchPoint = longPressGuesture.locationInView(view)
       
@@ -508,11 +507,11 @@ extension TaskBoardViewController {
       snapshotView.center.y = touchPoint.y + _draggingOffset.y
       
       guard let oldListIndexPath = _lastDragging?.listIndexPath else { return }
-      
       guard let collectionIndexPath = _collectionView.indexPathForItemAtPoint(longPressGuesture.locationInView(_collectionView)) else { return }
-      
       if oldListIndexPath.isEqual(collectionIndexPath) { return }
-      
+      if collectionIndexPath.item >= _taskLists.count {
+        return
+      }
       swap(&_taskLists[oldListIndexPath.item], &_taskLists[collectionIndexPath.item])
       _collectionView.moveItemAtIndexPath(collectionIndexPath, toIndexPath: oldListIndexPath)
       
@@ -617,7 +616,10 @@ extension TaskBoardViewController {
    */
   private func _taskIndexPath(atPoint point: CGPoint) -> (listIndexPath: NSIndexPath, taskIndexPath: NSIndexPath)? {
     guard let listIndexPath = _collectionView.indexPathForItemAtPoint(point) else { return nil }
-    guard let tasksCell = _collectionView.cellForItemAtIndexPath(listIndexPath) as? TasksCollectionViewCell else { return nil }
+    guard let tasksCell = _collectionView.cellForItemAtIndexPath(listIndexPath) as? TasksCollectionViewCell else {
+      guard let collectionIndexPath = _collectionView.indexPathForItemAtPoint(point) else { return  nil}
+      return (collectionIndexPath, NSIndexPath(forRow: 0, inSection: 0))
+   }
     
     guard let tasksViewController = tasksCell.tasksViewController else { return nil }
     guard let tasksTableView = tasksCell.tasksViewController?.tasksTableView else { return nil }
