@@ -13,7 +13,7 @@ class AddTaskListCollectionViewCell: UICollectionViewCell {
   
   // MARK: - Public
   
-  var saveNewProjectClosure: ((projectTitle: String) -> Void)?
+  var saveNewTaskListsClosure: ((taskListsTitle: String) -> Void)?
   
   // MARK: - Private
   
@@ -96,7 +96,7 @@ extension AddTaskListCollectionViewCell {
  
     
     _taskInputView.saveButtonDidClickAction = { (text: String) in
-      self.saveNewProjectClosure?(projectTitle: text)
+      self.saveNewTaskListsClosure?(taskListsTitle: text)
     }
     
     if _taskInputView.cancelButtonDidClickAction == nil {
