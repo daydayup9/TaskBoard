@@ -122,13 +122,13 @@ class TaskBoardViewController: UIViewController {
       var numbers = 0
       
       if index == 0 {
-        numbers = 6
+        numbers = 3
       } else if index == 1 {
         numbers = 32
       } else if index == 2 || index == 6 {
-        numbers = 8
+        numbers = 10
       } else if index == 3 || index == 4 {
-        numbers == 13
+        numbers == 1
       } else {
         numbers = 5
       }
@@ -146,6 +146,7 @@ class TaskBoardViewController: UIViewController {
     let horizontalInset = margin + lineSpacing
     
     _collectionViewFlowLayout = UICollectionViewFlowLayout()
+    _collectionViewFlowLayout.itemSize = CGSize(width: _itemWidth, height: _itemHeight)
     _collectionViewFlowLayout.scrollDirection = .Horizontal
     _collectionViewFlowLayout.minimumLineSpacing = lineSpacing
     _collectionViewFlowLayout.sectionInset = UIEdgeInsets(top: top, left: horizontalInset, bottom: bootom, right: horizontalInset)
@@ -266,7 +267,9 @@ extension TaskBoardViewController: UICollectionViewDataSource, UICollectionViewD
     
     if canAddList && indexPath.item == collectionView.numberOfItemsInSection(0) - 1 {
       let cell = collectionView.dequeueReusableCellWithReuseIdentifier(kAddTaskListCellID, forIndexPath: indexPath) as! AddTaskListCollectionViewCell
-      
+      cell.saveNewProjectClosure = { (projectTitle: String) in
+        self._saveNewProject(projectTitle)
+      }
       return cell
     }
     
@@ -279,6 +282,9 @@ extension TaskBoardViewController: UICollectionViewDataSource, UICollectionViewD
     cell.tasksViewController?.setupData(_taskLists[indexPath.item].tasks, maxHeight: _itemHeight - _keyboardHeight, superViewHeight: _itemHeight)
     cell.tasksViewController?.listHeaderViewLongPressActionClosure = { [weak self](longPressGuesture: UILongPressGestureRecognizer) in
       self?._listHeadViewLongPressGuestureAction(longPressGuesture)
+    }
+    cell.tasksViewController?.saveTaskClosure = { (taskTitle: String) in
+      self._saveNewtask(taskTitle)
     }
     return cell
   }
@@ -304,6 +310,16 @@ extension TaskBoardViewController: UIScrollViewDelegate {
 extension TaskBoardViewController {
   
   //MARK: - Private
+  
+  @objc
+  private func _saveNewProject(projectTitle: String) {
+    debugPrint("create Project: \(projectTitle)")
+  }
+  
+  @objc
+  private func _saveNewtask(taskTitle: String) {
+    debugPrint("create Task: \(taskTitle)")
+  }
   
   @objc
   private func _collectionViewDidLongPressed(gestureRecognizer: UILongPressGestureRecognizer) {
@@ -511,7 +527,8 @@ extension TaskBoardViewController {
       _snapshotView = nil
       
       if _isZoomForDragList {
-        _zoomCollectionView(touchAt: longPressGuesture.locationInView(_collectionView))
+        let touchPoint = longPressGuesture.locationInView(_collectionView)
+        _zoomCollectionView(touchAt: CGPoint(x: touchPoint.x * kZoomScale, y: touchPoint.y * kZoomScale))
         _isZoomForDragList = false
       }
       

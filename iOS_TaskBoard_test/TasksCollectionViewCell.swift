@@ -20,6 +20,7 @@ class TasksCollectionViewCell: UICollectionViewCell {
         _tasksViewController = tasksViewController
         
         contentView.addSubview(tasksViewController.view)
+//        tasksViewController.view.frame = bounds
         tasksViewController.view.snp_makeConstraints(closure: { (make) in
           make.leading.equalTo(0)
           make.trailing.equalTo(0)
@@ -33,4 +34,5 @@ class TasksCollectionViewCell: UICollectionViewCell {
   //MARK: - Property
   
   private var _tasksViewController: TasksViewController?
+  
 }

@@ -17,6 +17,7 @@ class TaskInputView: UIView {
   let cancelButton: UIButton
   
   var viewHeightDidChangeClosure: ((height: CGFloat) -> Void)?
+  var saveButtonDidClickAction: ((text: String) -> Void)?
   var cancelButtonDidClickAction: (() -> Void)?
   
   //MARK: - Property
@@ -72,6 +73,8 @@ class TaskInputView: UIView {
     }
     cancelButton.addTarget(self, action: #selector(_cancelButtonDidClick(_:)), forControlEvents: .TouchUpInside)
     
+    NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(_resignFirstResonderAction), name: "taskInputViewResignFirstResponder", object: nil)
+    
     layoutIfNeeded()
   }
   
@@ -93,7 +96,7 @@ extension TaskInputView: UITextViewDelegate {
   //MARK: - UITextViewDelegate
   
   func textViewDidChange(textView: UITextView) {
-    let textBounds = textView.bounds
+//    let textBounds = textView.bounds
     let newSize = textView.contentSize// sizeThatFits(CGSize(width: textBounds.width, height: CGFloat.max))
     textView.bounds.size = newSize
     
@@ -114,11 +117,19 @@ extension TaskInputView {
   
   @objc
   private func _confirmButtonDidClick(button: UIButton) {
-    
+    saveButtonDidClickAction?(text: inputTextView.text)
   }
   
   @objc
   private func _cancelButtonDidClick(button: UIButton) {
+    cancelButtonDidClickAction?()
+    inputTextView.resignFirstResponder()
+    inputTextView.text = ""
+    textViewDidChange(inputTextView)
+  }
+  
+  @objc
+  private func _resignFirstResonderAction() {
     cancelButtonDidClickAction?()
     inputTextView.resignFirstResponder()
     inputTextView.text = ""
