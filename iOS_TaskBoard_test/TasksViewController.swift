@@ -23,7 +23,8 @@ class TasksViewController: UIViewController {
   var listFooterView: TaskListFooterView!
   
   var listHeaderViewLongPressActionClosure: ((longPressGuesture: UILongPressGestureRecognizer) -> Void)?
-  
+  var saveTaskClosure: ((taskTitle: String) -> Void)?
+
   func reloadTask(task: Task, atIndexPath indexPath: NSIndexPath) {
     _tasks[indexPath.row] = task
     tasksTableView.beginUpdates()
@@ -67,8 +68,10 @@ class TasksViewController: UIViewController {
     tasksTableView.scrollRectToVisible(CGRect(origin: point, size: CGSize(width: 100, height: 5)), animated: false)
   }
   
-  func updateTableViewHeight(animated: Bool, additionHeight: CGFloat=0, maxHeight: CGFloat, superViewHeight: CGFloat) {
+  func updateTableViewHeight(animated: Bool, additionHeight: CGFloat=0, maxHeight: CGFloat, superViewHeight: CGFloat, isAddAction: Bool = false) {
     func updateTableViewHeight() -> CGFloat {
+      
+      listFooterView.layoutIfNeeded()
       
       let headerHeight = listHeaderView.frame.height
       let tableViewHeight = tasksTableView.contentSize.height
@@ -99,7 +102,9 @@ class TasksViewController: UIViewController {
         let newViewHeight = updateTableViewHeight()
         let additionHeight = newViewHeight - self.view.frame.height
         self.listFooterView.frame.origin.y += additionHeight
-        self.tasksTableView.frame.size.height += additionHeight
+        if !isAddAction {
+          self.tasksTableView.frame.size.height += additionHeight
+        }
         self.view.frame.size.height = newViewHeight
       }
     } else {
@@ -116,7 +121,7 @@ class TasksViewController: UIViewController {
   
   override func viewDidLoad() {
     super.viewDidLoad()
-    
+    view.translatesAutoresizingMaskIntoConstraints = false
     _setupAppearance()
     
     NSNotificationCenter.defaultCenter().addObserver(self, selector: #selector(_viewHeightDidChanged(_:)), name: kTaskListHeightDidChangedNotification, object: nil)
@@ -205,6 +210,9 @@ extension TasksViewController {
     //    tasksTableView.frame = CGRect(x: 0, y: 40, width: 321, height: 0)
     
     listFooterView = TaskListFooterView(frame: CGRect.zero)
+    listFooterView.saveNewTaskClosure = { (taskTitle: String) in
+      self.saveTaskClosure?(taskTitle: taskTitle)
+    }
     view.addSubview(listFooterView)
     listFooterView.snp_makeConstraints { (make) in
       make.leading.equalTo(0)
@@ -225,7 +233,7 @@ extension TasksViewController {
     guard let maxHeight = notification.userInfo?["max_height"] as? CGFloat else { return }
     guard let superViewHeight = notification.userInfo?["super_view_height"] as? CGFloat else { return }
     
-    updateTableViewHeight(true, maxHeight: maxHeight, superViewHeight: superViewHeight)
+    updateTableViewHeight(true, maxHeight: maxHeight, superViewHeight: superViewHeight, isAddAction: true)
   }
   
   @objc

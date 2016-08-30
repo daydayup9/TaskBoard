@@ -10,6 +10,11 @@ import UIKit
 
 class TaskListFooterView: UIView {
   
+  // MARK: - Public
+  
+  var saveNewTaskClosure: ((taskTitle: String) -> Void)?
+  
+  
   //MARK: - Property
   
   private var _addTaskButton: UIButton
@@ -50,11 +55,11 @@ extension TaskListFooterView {
   
   @objc
   private func _addTaskButtonDidClick(button: UIButton) {
+    NSNotificationCenter.defaultCenter().postNotificationName("taskInputViewResignFirstResponder", object: self)
     _addTaskButton.hidden = true
     _taskInputView.hidden = false
     _taskInputView.alpha = 1
     
-    _taskInputView.becomeFirstResponder()
     _taskInputView.snp_remakeConstraints { (make) in
       make.leading.equalTo(0)
       make.trailing.equalTo(0)
@@ -62,8 +67,12 @@ extension TaskListFooterView {
       make.bottom.equalTo(0)
     }
     
-    UIView.animateWithDuration(0.25) {
-      self.layoutIfNeeded()
+//    UIView.animateWithDuration(0.25) {
+//      self.layoutIfNeeded()
+    _taskInputView.becomeFirstResponder()
+//    }
+    _taskInputView.saveButtonDidClickAction = { (text: String) in
+      self.saveNewTaskClosure?(taskTitle: text)
     }
     
     if _taskInputView.cancelButtonDidClickAction == nil {
@@ -76,12 +85,12 @@ extension TaskListFooterView {
           make.top.equalTo(0)
         }
         
-        UIView.animateWithDuration(0.25, animations: {
-          self?.layoutIfNeeded()
+//        UIView.animateWithDuration(0.25, animations: {
+//          self?.layoutIfNeeded()
           self?._taskInputView.alpha = 0
-          }, completion: { (finished: Bool) in
+//          }, completion: { (finished: Bool) in
             self?._taskInputView.hidden = true
-        })
+//        })
       }
     }
   }
