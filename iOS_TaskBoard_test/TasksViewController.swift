@@ -9,9 +9,15 @@
 import UIKit
 
 let kTaskListHeightDidChangedNotification = "taskListHeightDidChangedNotification"
-let kTaskViewHeightNotigicationKey = "max_height"
-let kTaskSuperViewHeightNotigicationKey = "super_view_height"
+let kTaskViewHeightNotigicationKey        = "max_height"
+let kTaskSuperViewHeightNotigicationKey   = "super_view_height"
 
+/// 任务列表视图
+///
+/// 参数: 无
+///
+/// @since 1.0.0
+/// @author darui
 class TasksViewController: UIViewController {
   
   //MARK: - Public
@@ -55,9 +61,7 @@ class TasksViewController: UIViewController {
   
   var tasksTableViewWillEndScrollClosure: ((position: CGPoint) -> Void)?
   
-//  func setupData(tasks: [String], maxHeight: CGFloat, superViewHeight: CGFloat, scrollToPoint point: CGPoint?=nil) {
   func setupData(tasks: [Task], maxHeight: CGFloat, superViewHeight: CGFloat, scrollToPoint point: CGPoint?=nil) {
-
     _tasks = tasks
     
     tasksTableView.reloadData()
@@ -116,6 +120,7 @@ class TasksViewController: UIViewController {
   //MARK: - Property
   
   private var _tasks: [Task] = []
+  
   
   //MARK: - Lifecycle
   

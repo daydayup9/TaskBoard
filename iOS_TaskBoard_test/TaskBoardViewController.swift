@@ -11,28 +11,28 @@ import SnapKit
 import YYKeyboardManager
 import KeyboardMan
 
-protocol TaskType {
-  var hidden: Bool { get set }
-}
-
-protocol TaskListType {
-  var hidden: Bool { get set }
-  var tasks: [Task] { get set }
-}
-
-struct Task: TaskType {
+struct Task {
   var title: String
   var hidden: Bool = false
 }
 
-struct TaskList: TaskListType {
+struct TaskList {
   let name: String
+  let listID: String
+  let isAddingTask: Bool
+  let scrollPosition: CGFloat
   var hidden: Bool = false
   var tasks: [Task]
 }
 
 let kTaskTableViewShouldStopAutoScrollNotification: String = "TaskTableViewShouldStopAutoScrollNotification"
 
+/// 任务面板视图
+///
+/// 参数: 无
+///
+/// @since 1.0.0
+/// @author darui
 class TaskBoardViewController: UIViewController {
   
   //MARK: - Public
@@ -140,7 +140,7 @@ class TaskBoardViewController: UIViewController {
         tasks.append(task)
       }
       
-      _taskLists.append(TaskList(name: "新建任务\(index)", hidden: false, tasks: tasks))
+      _taskLists.append(TaskList(name: "新建任务\(index)", listID: "", isAddingTask: false, scrollPosition: 0, hidden: false, tasks: tasks))
     }
     
     let horizontalInset = margin + lineSpacing
@@ -202,14 +202,14 @@ class TaskBoardViewController: UIViewController {
         keyboardHeight = keyboardHeight / weakSelf.kZoomScale
       }
       weakSelf._keyboardHeight = keyboardHeight
-      NSNotificationCenter.defaultCenter().postNotificationName(kTaskListHeightDidChangedNotification, object: nil, userInfo: ["max_height": weakSelf._itemHeight - keyboardHeight, "super_view_height": weakSelf._itemHeight])
+      NSNotificationCenter.defaultCenter().postNotificationName(kTaskListHeightDidChangedNotification, object: nil, userInfo: [kTaskViewHeightNotigicationKey: weakSelf._itemHeight - keyboardHeight, kTaskSuperViewHeightNotigicationKey: weakSelf._itemHeight])
     }
     
     _keyboardMan?.animateWhenKeyboardDisappear = { [weak self] keyboardHeight in
       guard let weakSelf = self else { return }
       
       weakSelf._keyboardHeight = 0
-      NSNotificationCenter.defaultCenter().postNotificationName(kTaskListHeightDidChangedNotification, object: nil, userInfo: ["max_height": weakSelf._itemHeight, "super_view_height": weakSelf._itemHeight])
+      NSNotificationCenter.defaultCenter().postNotificationName(kTaskListHeightDidChangedNotification, object: nil, userInfo: [kTaskViewHeightNotigicationKey: weakSelf._itemHeight, kTaskSuperViewHeightNotigicationKey: weakSelf._itemHeight])
     }
   }
 }
@@ -248,7 +248,7 @@ extension TaskBoardViewController {
     self._collectionViewFlowLayout.itemSize.height = self._itemHeight
     self._collectionView.collectionViewLayout.invalidateLayout()
 //    self._collectionView.reloadData()
-    NSNotificationCenter.defaultCenter().postNotificationName(kTaskListHeightDidChangedNotification, object: nil, userInfo: ["max_height": _itemHeight, "super_view_height": _itemHeight])
+    NSNotificationCenter.defaultCenter().postNotificationName(kTaskListHeightDidChangedNotification, object: nil, userInfo: [kTaskViewHeightNotigicationKey: _itemHeight, kTaskSuperViewHeightNotigicationKey: _itemHeight])
     
 //    _pageScrollView.contentSize.width = _pageWidth * CGFloat(_collectionView.numberOfItemsInSection(0))
   }
@@ -430,8 +430,9 @@ extension TaskBoardViewController {
       
       NSNotificationCenter.defaultCenter().postNotificationName(kTaskTableViewShouldStopAutoScrollNotification, object: self, userInfo: nil)
       _collectionView.stopAutoScroll()
-      
-      _scrollToCorrectPage(atPosition: _collectionView.contentOffset.x)
+      if _screenDirection == .vertical && !_isZooming {
+        _scrollToCorrectPage(atPosition: _collectionView.contentOffset.x)
+      }
       _setPageable(!_isZooming)
       
       _snapshotView?.removeFromSuperview()
@@ -447,7 +448,7 @@ extension TaskBoardViewController {
       oldTasksVirewController.reloadTask(_taskLists[reloadListIndexPath.item].tasks[reloadTaskIndexPath.row], atIndexPath: reloadTaskIndexPath)
       
     case .Possible:
-      debugPrint("POSSIBLE....")
+      fatalError("Should rollback to origin status as failed or ended")
     }
   }
   
@@ -500,7 +501,6 @@ extension TaskBoardViewController {
       guard let snapshotView = _snapshotView else { return }
       
       _collectionView.touchRectDidChanged(snapshotView.frame)
-      guard let (_, taskIndexPath) = _taskIndexPath(atPoint: longPressGuesture.locationInView(_collectionView)) else { return }
       let touchPoint = longPressGuesture.locationInView(view)
       
       snapshotView.center.x = touchPoint.x + _draggingOffset.x
@@ -509,13 +509,12 @@ extension TaskBoardViewController {
       guard let oldListIndexPath = _lastDragging?.listIndexPath else { return }
       guard let collectionIndexPath = _collectionView.indexPathForItemAtPoint(longPressGuesture.locationInView(_collectionView)) else { return }
       if oldListIndexPath.isEqual(collectionIndexPath) { return }
-      if collectionIndexPath.item >= _taskLists.count {
-        return
-      }
+      if collectionIndexPath.item >= _taskLists.count { return }
+      
       swap(&_taskLists[oldListIndexPath.item], &_taskLists[collectionIndexPath.item])
       _collectionView.moveItemAtIndexPath(collectionIndexPath, toIndexPath: oldListIndexPath)
       
-      _lastDragging = (collectionIndexPath, taskIndexPath)
+      _lastDragging = (collectionIndexPath, NSIndexPath(forRow: 0, inSection: 0))
     case .Failed, .Cancelled, .Ended:
       _draggingListCell?.contentView.hidden = false
       _draggingListCell = nil
@@ -526,13 +525,12 @@ extension TaskBoardViewController {
       _snapshotView = nil
       
       if _isZoomForDragList {
-        let touchPoint = longPressGuesture.locationInView(_collectionView)
-        _zoomCollectionView(touchAt: CGPoint(x: touchPoint.x * kZoomScale, y: touchPoint.y * kZoomScale))
+        _zoomCollectionView(touchAt: longPressGuesture.locationInView(_collectionView))
         _isZoomForDragList = false
       }
       
     default:
-      break
+      fatalError("Should rollback to origin status as failed or ended")
     }
   }
   
@@ -557,10 +555,7 @@ extension TaskBoardViewController {
       
       let page: Int? = _taskListIndexPath(atPoint: touchPoint)?.item
       
-
-      
-      NSNotificationCenter.defaultCenter().postNotificationName(kTaskListHeightDidChangedNotification, object: nil, userInfo: ["max_height": _itemHeight, "super_view_height": _itemHeight])
-      
+      NSNotificationCenter.defaultCenter().postNotificationName(kTaskListHeightDidChangedNotification, object: nil, userInfo: [kTaskViewHeightNotigicationKey: _itemHeight, kTaskSuperViewHeightNotigicationKey: _itemHeight])
       
       _collectionViewFlowLayout.itemSize.height = self._itemHeight
       _collectionView.collectionViewLayout.invalidateLayout()
@@ -574,8 +569,6 @@ extension TaskBoardViewController {
         self._collectionView.frame.size.width *= self.kZoomScale
         self._collectionView.frame.size.height *= self.kZoomScale
 
- 
-
         if self._screenDirection == .vertical {
           self._scrollToCorrectPage(atPosition: self._collectionView.contentOffset.x / self.kZoomScale, page: page)
         }
@@ -587,7 +580,7 @@ extension TaskBoardViewController {
     } else { // Zooming
       self._isZooming = true
       
-      NSNotificationCenter.defaultCenter().postNotificationName(kTaskListHeightDidChangedNotification, object: nil, userInfo: ["max_height": _itemHeight, "super_view_height": _itemHeight])
+      NSNotificationCenter.defaultCenter().postNotificationName(kTaskListHeightDidChangedNotification, object: nil, userInfo: [kTaskViewHeightNotigicationKey: _itemHeight, kTaskSuperViewHeightNotigicationKey: _itemHeight])
       _collectionViewFlowLayout.itemSize.height = self._itemHeight
       _collectionViewFlowLayout.invalidateLayout()
       
@@ -599,6 +592,11 @@ extension TaskBoardViewController {
 
         self._collectionView.frame.size.width /= self.kZoomScale
         self._collectionView.frame.size.height /= self.kZoomScale
+        
+        let screenWidth = self.kScreenWidth * self.kZoomScale
+        if self._collectionView.contentOffset.x - screenWidth > 0 {
+          self._collectionView.contentOffset.x -= screenWidth
+        }
         
       }) { (finished:Bool) in
         self._setPageable(false)
@@ -665,7 +663,7 @@ extension TaskBoardViewController {
     _collectionView.showsHorizontalScrollIndicator = !pageable
   }
   
-  private func _scrollToCorrectPage(atPosition targetOffsetX: CGFloat, page: Int?=nil, animated: Bool=true) {
+  private func _scrollToCorrectPage(atPosition targetOffsetX: CGFloat, page: Int?=nil) {
     if UIDevice.currentDevice().userInterfaceIdiom == .Pad || _isZooming { return }
 
     var correctPage: Int = 0
@@ -677,7 +675,10 @@ extension TaskBoardViewController {
     
     let contentOffsetX = CGFloat(correctPage) * _pageScrollView.bounds.width
     _pageScrollView.contentOffset.x = contentOffsetX
-    _collectionView.setContentOffset(CGPoint(x: contentOffsetX, y: 0), animated: animated)
+    
+    UIView.animateWithDuration(0.25) { 
+      self._collectionView.contentOffset.x = contentOffsetX
+    }
   }
   
 //  private func _setPageScrollViewContentSize() {

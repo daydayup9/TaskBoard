@@ -8,7 +8,13 @@
 
 import UIKit
 
-
+/// 用来实现ScrollView自动滚动
+///
+/// 参数: scrollViewRect: ScrollView的范围, touchRect: 手指拖动的范围，
+///   根据touchRect超出scrollViewRect的多少决定速度的大小
+///
+/// @since 1.0.0
+/// @author darui
 class AutoScrollManager {
 
   //MARK: - Public
@@ -22,8 +28,13 @@ class AutoScrollManager {
       }
     }
   }
+  
+  /// 触控点超出了范围，可以开始滚动了
   var shouldScroll: ((distance: CGFloat, direction: ScrollDirection) -> Void)?
   
+  /**
+   停止自动滚动
+   */
   func stopAutoScroll() {
     _displayLink?.invalidate()
     _displayLink = nil
