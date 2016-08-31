@@ -19,7 +19,6 @@ class AddTaskListCollectionViewCell: UICollectionViewCell {
   
   private var _addProjectButton: UIButton
   private var _backView: UIView
-//  private var _taskInputView: TaskInputView
   private lazy var _taskInputView: TaskInputView = {
     let taskInputView = TaskInputView(frame: CGRect(x: 0, y: 0, width: self.frame.width, height: 0))
     self._backView.addSubview(taskInputView)

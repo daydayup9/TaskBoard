@@ -275,6 +275,7 @@ extension TaskBoardViewController: UICollectionViewDataSource, UICollectionViewD
     
     let cell = collectionView.dequeueReusableCellWithReuseIdentifier(kTaskListCellID, forIndexPath: indexPath) as! TasksCollectionViewCell
     cell.backgroundColor = UIColor.redColor()
+    cell.contentView.hidden = _taskLists[indexPath.item].hidden
     
     if cell.tasksViewController == nil {
       cell.tasksViewController = UIStoryboard(name: "Main", bundle: nil).instantiateViewControllerWithIdentifier("TasksViewController") as? TasksViewController
@@ -462,11 +463,13 @@ extension TaskBoardViewController {
         guard let tasksCell = _collectionView.cellForItemAtIndexPath(listIndexPath) as? TasksCollectionViewCell else { return }
         tasksCell.contentView.hidden = true
         
+        _taskLists[listIndexPath.item].hidden = true
+        
         _snapshotView = tasksCell.contentView.snapshotViewAfterScreenUpdates(false)
         guard let snapshotView = _snapshotView else { return }
         
         _collectionView.scrollsToTop = false
-        _draggingListCell = tasksCell
+//        _draggingListCell = tasksCell
         snapshotView.backgroundColor = UIColor.orangeColor()
         view.addSubview(snapshotView)
        
@@ -498,6 +501,7 @@ extension TaskBoardViewController {
         beginDragging()
       }
     case .Changed:
+      debugPrint("0000")
       guard let snapshotView = _snapshotView else { return }
       
       _collectionView.touchRectDidChanged(snapshotView.frame)
@@ -505,7 +509,6 @@ extension TaskBoardViewController {
       
       snapshotView.center.x = touchPoint.x + _draggingOffset.x
       snapshotView.center.y = touchPoint.y + _draggingOffset.y
-      
       guard let oldListIndexPath = _lastDragging?.listIndexPath else { return }
       guard let collectionIndexPath = _collectionView.indexPathForItemAtPoint(longPressGuesture.locationInView(_collectionView)) else { return }
       if oldListIndexPath.isEqual(collectionIndexPath) { return }
@@ -513,19 +516,33 @@ extension TaskBoardViewController {
       
       swap(&_taskLists[oldListIndexPath.item], &_taskLists[collectionIndexPath.item])
       _collectionView.moveItemAtIndexPath(collectionIndexPath, toIndexPath: oldListIndexPath)
-      
+      _collectionView.reloadItemsAtIndexPaths([collectionIndexPath])
       _lastDragging = (collectionIndexPath, NSIndexPath(forRow: 0, inSection: 0))
     case .Failed, .Cancelled, .Ended:
-      _draggingListCell?.contentView.hidden = false
-      _draggingListCell = nil
-      _collectionView.stopAutoScroll()
       
-      _snapshotView?.transform = CGAffineTransformIdentity
-      _snapshotView?.removeFromSuperview()
-      _snapshotView = nil
+      func endDragging() {
+//        _draggingListCell?.contentView.hidden = false
+//        _draggingListCell = nil
+        _collectionView.stopAutoScroll()
+        
+        _snapshotView?.transform = CGAffineTransformIdentity
+        _snapshotView?.removeFromSuperview()
+        _snapshotView = nil
+        guard let finalListIndexPath = _lastDragging?.listIndexPath else { return }
+        _taskLists[finalListIndexPath.item].hidden = false
+        _collectionView.reloadItemsAtIndexPaths([finalListIndexPath])
+      }
       
+      endDragging()
+      let delayTime = dispatch_time(DISPATCH_TIME_NOW, Int64(0.25 * Double(NSEC_PER_SEC)))
+      dispatch_after(delayTime, dispatch_get_main_queue(), {
+        if self._snapshotView != nil {
+          endDragging()
+        }
+      })
       if _isZoomForDragList {
-        _zoomCollectionView(touchAt: longPressGuesture.locationInView(_collectionView))
+        let touchPoint = longPressGuesture.locationInView(_collectionView)
+        _zoomCollectionView(touchAt: CGPoint(x: touchPoint.x * kZoomScale, y: touchPoint.y * kZoomScale))
         _isZoomForDragList = false
       }
       
